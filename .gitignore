@@ -6,3 +6,6 @@ venv/
 
 # Data source
 data/
+
+# Outputs
+output/
