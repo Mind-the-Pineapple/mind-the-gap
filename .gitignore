@@ -5,7 +5,9 @@ venv/
 .idea
 
 # Data source
-data/
+data/*
+!data/.gitkeep
 
 # Outputs
-output/
+output/*
+!output/.gitkeep
