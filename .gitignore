@@ -4,6 +4,12 @@ venv/
 # Pycharm
 .idea
 
+# Python
+*.pyc
+
+# vim
+*.swp
+
 # Data source
 data/*
 !data/.gitkeep
