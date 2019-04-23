@@ -18,3 +18,6 @@ Install virtualenv and creating a new virtual environment:
 Install dependencies
 
     pip3 install -r requirements.txt
+    
+## Organization
+Each experiment will be stored in a different .py file. Please, add new readers in the helper_functions.
