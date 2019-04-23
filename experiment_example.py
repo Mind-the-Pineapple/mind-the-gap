@@ -10,7 +10,7 @@ from sklearn.model_selection import KFold, GridSearchCV
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import LinearSVR
 
-from helper_functions import read_freesurfer_volumetric_original_data
+from helper_functions import read_freesurfer_example
 
 PROJECT_ROOT = Path.cwd()
 
@@ -33,9 +33,10 @@ cv_dir.mkdir(exist_ok=True)
 # --------------------------------------------------------------------------
 # Input data directory (plz, feel free to use NAN shared folder)
 input_dir = PROJECT_ROOT / 'data' / 'freesurfer'
+demographic_path = PROJECT_ROOT / 'data' / 'PAC2019_BrainAge_Training.csv'
 
 # Reading data. If necessary, create new reader in helper_functions.
-x, demographic_df = read_freesurfer_data(input_dir)
+x, demographic_df = read_freesurfer_example(str(input_dir), str(demographic_path))
 
 # --------------------------------------------------------------------------
 # Using only age
