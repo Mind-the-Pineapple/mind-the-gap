@@ -5,6 +5,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import nibabel as nib
 import glob
@@ -90,3 +91,71 @@ def convert_nifty_to_numpy(data_dir, dst):
     print("All files created.")
 
 
+def create_gram_matrix(input_path):
+    """
+    Computes the Gram matrix for the SVM method.
+
+    Reference: http://scikit-learn.org/stable/modules/svm.html#using-the-gram-matrix
+    """
+    input_dir = Path(input_path)
+    step_size = 20
+
+    img_paths = list(input_dir.glob('*.npy'))
+
+    n_samples = len(img_paths)
+
+    K = np.float64(np.zeros((n_samples, n_samples)))
+
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):#
+
+        it = i + 1
+        max_it = int(np.ceil(n_samples / np.float(step_size)))
+        print(" outer loop iteration: %d of %d." % (it, max_it))
+
+        # generate indices and then paths for this block
+        start_ind_1 = i * step_size
+        stop_ind_1 = min(start_ind_1 + step_size, n_samples)
+        block_paths_1 = img_paths[start_ind_1:stop_ind_1]
+
+        # read in the images in this block
+        images_1 = []
+        for k, path in enumerate(block_paths_1):
+            img = np.load(str(path))
+            img = np.asarray(img, dtype='float64')
+            img = np.nan_to_num(img)
+            img_vec = np.reshape(img, np.product(img.shape))
+            images_1.append(img_vec)
+            del img
+        images_1 = np.array(images_1)
+        for j in range(i + 1):
+
+            it = j + 1
+            max_it = i + 1
+
+            print(" inner loop iteration: %d of %d." % (it, max_it))
+
+            # if i = j, then sets of image data are the same - no need to load
+            if i == j:
+
+                start_ind_2 = start_ind_1
+                stop_ind_2 = stop_ind_1
+                images_2 = images_1
+
+            # if i !=j, read in a different block of images
+            else:
+                start_ind_2 = j * step_size
+                stop_ind_2 = min(start_ind_2 + step_size, n_samples)
+                block_paths_2 = img_paths[start_ind_2:stop_ind_2]
+
+                images_2 = []
+                for k, path in enumerate(block_paths_2):
+                    img = np.load(str(path))
+                    img = np.asarray(img, dtype='float64')
+                    img_vec = np.reshape(img, np.product(img.shape))
+                    images_2.append(img_vec)
+                    del img
+                images_2 = np.array(images_2)
+
+            block_K = np.dot(images_1, np.transpose(images_2))
+            K[start_ind_1:stop_ind_1, start_ind_2:stop_ind_2] = block_K
+            K[start_ind_2:stop_ind_2, start_ind_1:stop_ind_1] = np.transpose(block_K)
