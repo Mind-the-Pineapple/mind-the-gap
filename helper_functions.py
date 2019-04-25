@@ -111,8 +111,8 @@ def create_gram_matrix_train_data(input_dir_path, output_path):
 
     Reference: http://scikit-learn.org/stable/modules/svm.html#using-the-gram-matrix
     """
-    input_dir = Path(input_dir_path)
-    step_size = 100
+    input_dir = Path(input_path)
+    step_size = 20
 
     img_paths = list(input_dir.glob('*.npy'))
 
@@ -120,7 +120,7 @@ def create_gram_matrix_train_data(input_dir_path, output_path):
 
     K = np.float64(np.zeros((n_samples, n_samples)))
 
-    for i in range(int(np.ceil(n_samples / np.float(step_size)))):  #
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):#
 
         it = i + 1
         max_it = int(np.ceil(n_samples / np.float(step_size)))
@@ -360,5 +360,4 @@ def resample_brain_mask(save_mask=False):
                  str(PROJECT_ROOT, 'data'/ 'masks'/
                      'MNI152_T1_1.5mm_brain_masked.nii.gz'))
     return resampled_img
-
 
