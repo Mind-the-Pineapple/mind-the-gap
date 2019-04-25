@@ -360,7 +360,7 @@ def create_gram_matrix_w_site_info_train_data(input_dir_path, output_path, demog
 
     K = np.float64(np.zeros((n_samples, n_samples)))
 
-    for i in range(int(np.ceil(n_samples / np.float(step_size)))):  #
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):#
 
         it = i + 1
         max_it = int(np.ceil(n_samples / np.float(step_size)))
@@ -374,16 +374,10 @@ def create_gram_matrix_w_site_info_train_data(input_dir_path, output_path, demog
         # read in the images in this block
         images_1 = []
         for k, path in enumerate(block_paths_1):
-            subject_id = path.stem.split('_')[0]
-            subject_site = np.array([demographic_df.loc[subject_id].site])
-            onehot_encoded = enc.transform(subject_site[:,np.newaxis])
-
             img = np.load(str(path))
             img = np.asarray(img, dtype='float64')
             img = np.nan_to_num(img)
             img_vec = np.reshape(img, np.product(img.shape))
-
-            img_vec = np.append(img_vec,site_weight*onehot_encoded[0])
             images_1.append(img_vec)
             del img
         images_1 = np.array(images_1)
@@ -409,15 +403,9 @@ def create_gram_matrix_w_site_info_train_data(input_dir_path, output_path, demog
 
                 images_2 = []
                 for k, path in enumerate(block_paths_2):
-                    subject_id = path.stem.split('_')[0]
-                    subject_site = np.array([demographic_df.loc[subject_id].site])
-                    onehot_encoded = enc.transform(subject_site[:, np.newaxis])
-
                     img = np.load(str(path))
                     img = np.asarray(img, dtype='float64')
                     img_vec = np.reshape(img, np.product(img.shape))
-                    img_vec = np.append(img_vec, site_weight*onehot_encoded[0])
-
                     images_2.append(img_vec)
                     del img
                 images_2 = np.array(images_2)
