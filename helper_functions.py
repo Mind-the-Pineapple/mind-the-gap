@@ -360,7 +360,7 @@ def create_gram_matrix_w_site_info_train_data(input_dir_path, output_path, demog
 
     K = np.float64(np.zeros((n_samples, n_samples)))
 
-    for i in range(int(np.ceil(n_samples / np.float(step_size)))):#
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):  #
 
         it = i + 1
         max_it = int(np.ceil(n_samples / np.float(step_size)))
