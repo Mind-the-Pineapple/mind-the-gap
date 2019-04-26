@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import seaborn as sns
+
 sns.set(style="whitegrid")
+
 
 def plot_age_distribution(df, save_path):
     plt.figure()
@@ -38,7 +40,7 @@ def read_freesurfer_example(data_dir, demographic_path):
     aparc_lh_name = 'lh_aparc_stats_vol.csv'
     aparc_rh_name = 'rh_aparc_stats_vol.csv'
 
-    freesurfer_dir =  Path(data_dir)
+    freesurfer_dir = Path(data_dir)
     aseg_df = pd.read_csv(freesurfer_dir / aseg_name)
     aparc_lh_df = pd.read_csv(freesurfer_dir / aparc_lh_name)
     aparc_rh_df = pd.read_csv(freesurfer_dir / aparc_rh_name)
@@ -59,14 +61,25 @@ def read_freesurfer_example(data_dir, demographic_path):
     return x, demographic_df
 
 
-def create_gram_matrix(input_path):
+def read_gram_matrix(gram_matrix_path, demographic_path):
+    demographic_df = pd.read_csv(demographic_path)
+    gram_df = pd.read_csv(gram_matrix_path, index_col='subject_ID')
+
+    gram_df = gram_df[list(demographic_df['subject_ID'])]
+
+    gram_df = gram_df.reindex(list(demographic_df['subject_ID']))
+
+    return gram_df.values, demographic_df
+
+
+def create_gram_matrix_train_data(input_dir_path, output_path):
     """
     Computes the Gram matrix for the SVM method.
 
     Reference: http://scikit-learn.org/stable/modules/svm.html#using-the-gram-matrix
     """
-    input_dir = Path(input_path)
-    step_size = 20
+    input_dir = Path(input_dir_path)
+    step_size = 100
 
     img_paths = list(input_dir.glob('*.npy'))
 
@@ -74,7 +87,7 @@ def create_gram_matrix(input_path):
 
     K = np.float64(np.zeros((n_samples, n_samples)))
 
-    for i in range(int(np.ceil(n_samples / np.float(step_size)))):#
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):  #
 
         it = i + 1
         max_it = int(np.ceil(n_samples / np.float(step_size)))
@@ -127,3 +140,14 @@ def create_gram_matrix(input_path):
             block_K = np.dot(images_1, np.transpose(images_2))
             K[start_ind_1:stop_ind_1, start_ind_2:stop_ind_2] = block_K
             K[start_ind_2:stop_ind_2, start_ind_1:stop_ind_1] = np.transpose(block_K)
+
+    subj_id = []
+
+    for fullpath in img_paths:
+        subj_id.append(fullpath.stem.split('_')[0])
+
+    gram_df = pd.DataFrame(columns=subj_id, data=K)
+    gram_df['subject_ID'] = subj_id
+    gram_df = gram_df.set_index('subject_ID')
+
+    gram_df.to_csv(output_path)
