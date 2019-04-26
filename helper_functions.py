@@ -64,7 +64,6 @@ def read_freesurfer_example(data_dir, demographic_path):
 
     return x, demographic_df
 
-
 def convert_nifty_to_numpy(data_dir, dst):
     """
     Reads Nifty files and saves them into a numpy extension in order to optimize loading times
@@ -111,8 +110,8 @@ def create_gram_matrix_train_data(input_dir_path, output_path):
 
     Reference: http://scikit-learn.org/stable/modules/svm.html#using-the-gram-matrix
     """
-    input_dir = Path(input_path)
-    step_size = 20
+    input_dir = Path(input_dir_path)
+    step_size = 100
 
     img_paths = list(input_dir.glob('*.npy'))
 
@@ -120,7 +119,7 @@ def create_gram_matrix_train_data(input_dir_path, output_path):
 
     K = np.float64(np.zeros((n_samples, n_samples)))
 
-    for i in range(int(np.ceil(n_samples / np.float(step_size)))):#
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):  #
 
         it = i + 1
         max_it = int(np.ceil(n_samples / np.float(step_size)))
@@ -184,7 +183,6 @@ def create_gram_matrix_train_data(input_dir_path, output_path):
     gram_df = gram_df.set_index('subject_ID')
 
     gram_df.to_csv(output_path)
-
 
 
 def create_wm_and_gm_gram_matrix_train_data(wm_dir_path, gm_dir_path, output_path):
