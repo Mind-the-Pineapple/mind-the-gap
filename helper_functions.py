@@ -65,7 +65,6 @@ def read_freesurfer_example(data_dir, demographic_path):
 
     return x, demographic_df
 
-
 def read_freesurfer(data_dir, demographic_path, columns_name):
     """
     Read volumetric data and demographic data. Note: demographic file is included here to make sure that the
