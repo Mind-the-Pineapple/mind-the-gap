@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import nibabel as nib
+import glob
+import os
 sns.set(style="whitegrid")
 
 def plot_age_distribution(df, save_path):
@@ -84,7 +86,7 @@ def convert_nifty_to_numpy(data_dir, dst):
         img = np.array(img.dataobj)
         np.save(dst +'/'+ os.path.basename(name), img)
         print('Saved file '+ str(i) + ' out of ' + str(count))
-    
+
     print("All files created.")
 
 
