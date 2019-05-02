@@ -14,7 +14,7 @@ An Ubuntu 18.04 Singularity container with basic Python 3.6.6 and packages
                     python3-pip \
                     locales \
                     language-pack-fi \
-                    language-pack-en 
+                    language-pack-en
 
     # to solve the "locale.Error: unsupported locale setting" error
     export LANGUAGE=en_US.UTF-8
@@ -28,12 +28,18 @@ An Ubuntu 18.04 Singularity container with basic Python 3.6.6 and packages
     # create and activate virtualenv and install remaining packages
     virtualenv -p python3 /neuroenv
     /bin/bash -c "source /neuroenv/bin/activate && \
-    pip3 --no-cache-dir install -r ../requirements.txt
+    pip3 --no-cache-dir install \
+         pandas==0.24.2\
+         numpy==1.16.2\
+         seaborn==0.9.0\
+         matplotlib==3.0.3\
+         nibabel==2.4.0\
+         scikit-learn==0.20.3\
+         joblib==0.13.2"
  
     # Check if the project folder exists and if not create it
     if [ ! -d /code ]; then mkdir /code; fi
-    if [ ! -d /sing ]; then mkdir -p /sing; fi
 
 %runscript
-/sing/startup.sh "$@"
+/code/singularity/startup.sh "$@"
 
