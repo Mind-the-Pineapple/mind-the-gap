@@ -183,3 +183,108 @@ def create_gram_matrix_train_data(input_dir_path, output_path):
     gram_df = gram_df.set_index('subject_ID')
 
     gram_df.to_csv(output_path)
+
+
+
+def create_wm_and_gm_gram_matrix_train_data(wm_dir_path, gm_dir_path, output_path):
+    """
+    Computes the Gram matrix for the SVM method.
+
+    Reference: http://scikit-learn.org/stable/modules/svm.html#using-the-gram-matrix
+    """
+    wm_dir = Path(wm_dir_path)
+    gm_dir = Path(gm_dir_path)
+    step_size = 100
+
+    img_gm_paths = sorted(list(gm_dir.glob('*.npy')))
+    img_wm_paths = sorted(list(wm_dir.glob('*.npy')))
+
+    n_samples = len(img_wm_paths)
+
+    K = np.float64(np.zeros((n_samples, n_samples)))
+
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):  #
+
+        it = i + 1
+        max_it = int(np.ceil(n_samples / np.float(step_size)))
+        print(" outer loop iteration: %d of %d." % (it, max_it))
+
+        # generate indices and then paths for this block
+        start_ind_1 = i * step_size
+        stop_ind_1 = min(start_ind_1 + step_size, n_samples)
+        block_paths_1_wm = img_wm_paths[start_ind_1:stop_ind_1]
+        block_paths_1_gm = img_gm_paths[start_ind_1:stop_ind_1]
+
+        # read in the images in this block
+        images_1 = []
+        for k, (path_wm, path_gm) in enumerate(zip(block_paths_1_wm, block_paths_1_gm)):
+
+            img_wm = np.load(str(path_wm))
+            img_wm = np.asarray(img_wm, dtype='float64')
+            img_wm = np.nan_to_num(img_wm)
+            img_vec_wm = np.reshape(img_wm, np.product(img_wm.shape))
+
+            img_gm = np.load(str(path_gm))
+            img_gm = np.asarray(img_gm, dtype='float64')
+            img_gm = np.nan_to_num(img_gm)
+            img_vec_gm = np.reshape(img_gm, np.product(img_wm.shape))
+
+            img_vec = np.append(img_vec_wm, img_vec_gm)
+
+            images_1.append(img_vec)
+            del img_wm, img_gm
+        images_1 = np.array(images_1)
+        for j in range(i + 1):
+
+            it = j + 1
+            max_it = i + 1
+
+            print(" inner loop iteration: %d of %d." % (it, max_it))
+
+            # if i = j, then sets of image data are the same - no need to load
+            if i == j:
+
+                start_ind_2 = start_ind_1
+                stop_ind_2 = stop_ind_1
+                images_2 = images_1
+
+            # if i !=j, read in a different block of images
+            else:
+                start_ind_2 = j * step_size
+                stop_ind_2 = min(start_ind_2 + step_size, n_samples)
+                block_paths_2_wm = img_wm_paths[start_ind_2:stop_ind_2]
+                block_paths_2_gm = img_gm_paths[start_ind_2:stop_ind_2]
+
+
+                images_2 = []
+                for k, (path_wm, path_gm) in enumerate(zip(block_paths_2_wm, block_paths_2_gm)):
+                    img_wm = np.load(str(path_wm))
+                    img_wm = np.asarray(img_wm, dtype='float64')
+                    img_wm = np.nan_to_num(img_wm)
+                    img_vec_wm = np.reshape(img_wm, np.product(img_wm.shape))
+
+                    img_gm = np.load(str(path_gm))
+                    img_gm = np.asarray(img_gm, dtype='float64')
+                    img_gm = np.nan_to_num(img_gm)
+                    img_vec_gm = np.reshape(img_gm, np.product(img_wm.shape))
+
+                    img_vec = np.append(img_vec_wm, img_vec_gm)
+
+                    images_2.append(img_vec)
+                    del img_wm, img_gm
+                images_2 = np.array(images_2)
+
+            block_K = np.dot(images_1, np.transpose(images_2))
+            K[start_ind_1:stop_ind_1, start_ind_2:stop_ind_2] = block_K
+            K[start_ind_2:stop_ind_2, start_ind_1:stop_ind_1] = np.transpose(block_K)
+
+    subj_id = []
+
+    for fullpath in img_gm_paths:
+        subj_id.append(fullpath.stem.split('_')[0])
+
+    gram_df = pd.DataFrame(columns=subj_id, data=K)
+    gram_df['subject_ID'] = subj_id
+    gram_df = gram_df.set_index('subject_ID')
+
+    gram_df.to_csv(output_path)
