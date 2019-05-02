@@ -6,6 +6,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import nibabel as nib
+import glob
+import os
 sns.set(style="whitegrid")
 
 def plot_age_distribution(df, save_path):
@@ -56,3 +59,34 @@ def read_freesurfer_example(data_dir, demographic_path):
     x = x_df.values.astype('float32')
 
     return x, demographic_df
+
+
+def convert_nifty_to_numpy(data_dir, dst):
+    """
+    Reads Nifty files and saves them into a numpy extension in order to optimize loading times
+
+    Args:
+        data_dir: String with path to directory with Nifty files.
+        dst: String with path to directory where numpy files will be stored
+    """
+    if not os.path.exists(data_dir):
+        return print("Path to directory does not exist.")
+    if not os.path.exists(dst):
+        os.makedirs(dst)
+
+    modules = glob.glob(data_dir+ '/*.nii.gz')
+    count = len(modules)
+
+    for i, name in enumerate(modules):
+        try:
+            img = nib.load(name)
+        except:
+            print("File "+name+ " doesn't seem to exist")
+            continue
+        img = np.array(img.dataobj)
+        np.save(dst +'/'+ os.path.basename(name), img)
+        print('Saved file '+ str(i) + ' out of ' + str(count))
+
+    print("All files created.")
+
+
