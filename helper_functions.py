@@ -547,34 +547,28 @@ def create_wm_and_gm_w_site_info_gram_matrix_train_data(wm_dir_path, gm_dir_path
 def read_npy_files(input_dir_path, demographic_path):
     input_dir = Path(input_dir_path)
 
+    # Iterate over all subjects and append their data to a dataframe
     img_paths = sorted(list(input_dir.glob('*.npy')))
     demographic_df = pd.read_csv(demographic_path)
-    subjects_id = []
+    data_df = pd.DataFrame()
     # read images
-    images_1 = []
     for k, path in enumerate(img_paths):
         img = np.load(str(path))
-        img = np.asarray(img, dtype='float64')
+        img = np.asarray(img, dtype='float32')
         img = np.nan_to_num(img)
         img_vec = np.reshape(img, np.product(img.shape))
-        images_1.append(img_vec)
+        # get subject's ID
+        subject_id = path.stem.split('_')[0]
+        data_df = data_df.append({'subject_id': subject_id, 'data': img_vec},
+                                 ignore_index=True)
         del img
 
-        # get subject's ID
-        subjects_id.append(path.stem.split('_')[0])
 
-    import pdb
-    pdb.set_trace()
-    data_df = pd.DataFrame(columns=subjects_id, data=images_1)
-    data_df['subject_id'] = subjects_id
-    data_df = data_df.set_index('subject_ID')
-
-    # Make sure both datasets use the same indexs
-    data_df = data_df[list(demographic_df['subject_ID'])]
+    # Make sure both datasets use the same subject's index in the corect order
+    data_df = data_df.set_index('subject_id')
     data_df = data_df.reindex(list(demographic_df['subject_ID']))
-    # reorder the dataframe in the same way the data
-    x = np.array(images_1)
-    print(x.shape)
 
-
+    # Check if the reindexing created any NaNs
+    print('Check NaNs on the reindexed dataframe')
+    print(pd.isnull(data_df).sum())
     return data_df.values, demographic_df
