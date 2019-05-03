@@ -288,3 +288,38 @@ def create_wm_and_gm_gram_matrix_train_data(wm_dir_path, gm_dir_path, output_pat
     gram_df = gram_df.set_index('subject_ID')
 
     gram_df.to_csv(output_path)
+
+def read_npy_files(input_dir_path, demographic_path):
+    input_dir = Path(input_dir_path)
+
+    img_paths = sorted(list(input_dir.glob('*.npy')))
+    demographic_df = pd.read_csv(demographic_path)
+    subjects_id = []
+    # read images
+    images_1 = []
+    for k, path in enumerate(img_paths):
+        img = np.load(str(path))
+        img = np.asarray(img, dtype='float64')
+        img = np.nan_to_num(img)
+        img_vec = np.reshape(img, np.product(img.shape))
+        images_1.append(img_vec)
+        del img
+
+        # get subject's ID
+        subjects_id.append(path.stem.split('_')[0])
+
+    import pdb
+    pdb.set_trace()
+    data_df = pd.DataFrame(columns=subjects_id, data=images_1)
+    data_df['subject_id'] = subjects_id
+    data_df = data_df.set_index('subject_ID')
+
+    # Make sure both datasets use the same indexs
+    data_df = data_df[list(demographic_df['subject_ID'])]
+    data_df = data_df.reindex(list(demographic_df['subject_ID']))
+    # reorder the dataframe in the same way the data
+    x = np.array(images_1)
+    print(x.shape)
+
+
+    return data_df.values, demographic_df
