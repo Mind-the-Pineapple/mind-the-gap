@@ -36,8 +36,10 @@ input_dir = PROJECT_ROOT / 'data' / 'SPM' /'np' / 'gm'
 demographic_path = PROJECT_ROOT / 'data' / 'PAC2019_BrainAge_Training.csv'
 
 # Reading data. If necessary, create new reader in helper_functions.
-x, demographic_df = read_npy_files(str(input_dir), str(demographic_path))
+x, demographic_df = read_npy_files(str(input_dir), str(demographic_path),
+                                   use_mask=True)
 x = [data[0] for data in x]
+x = np.array(x)
 # --------------------------------------------------------------------------
 # Usiing only age
 y = demographic_df['age'].values
@@ -63,9 +65,9 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
 
     # --------------------------------------------------------------------------
     # Dimensionality reduction
-    pca = PCA(n_components=.90)
     import pdb
     pdb.set_trace()
+    pca = PCA(n_components=.90)
     x_train_pca = pca.fit_transform(x_train)
     x_test_pca = pca.transform(x_train)
 

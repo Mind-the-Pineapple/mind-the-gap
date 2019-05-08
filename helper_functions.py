@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import nibabel as nib
+from nibabel import processing
 import glob
 import os
 
@@ -289,24 +290,37 @@ def create_wm_and_gm_gram_matrix_train_data(wm_dir_path, gm_dir_path, output_pat
 
     gram_df.to_csv(output_path)
 
-def read_npy_files(input_dir_path, demographic_path):
+def read_npy_files(input_dir_path, demographic_path, use_mask=False):
     input_dir = Path(input_dir_path)
+    PROJECT_ROOT = Path.cwd()
 
     # Iterate over all subjects and append their data to a dataframe
     img_paths = sorted(list(input_dir.glob('*.npy')))
     demographic_df = pd.read_csv(demographic_path)
     data_df = pd.DataFrame()
+
+    if use_mask:
+        # Load the brain mask
+        brain_mask_path = str(PROJECT_ROOT / 'data' / 'masks' /
+                              'MNI152_T1_1.5mm_brain_masked.nii.gz')
+        msk_img = nib.load(brain_mask_path)
+        mask = msk_img.get_data()
+
     # read images
     for k, path in enumerate(img_paths):
         img = np.load(str(path))
         img = np.asarray(img, dtype='float32')
         img = np.nan_to_num(img)
-        img_vec = np.reshape(img, np.product(img.shape))
+        if use_mask:
+            # Use the mask to filter the subject data
+            img_vec = img[mask==1]
+        else:
+            img_vec = np.reshape(img, np.product(img.shape))
         # get subject's ID
         subject_id = path.stem.split('_')[0]
         data_df = data_df.append({'subject_id': subject_id, 'data': img_vec},
                                  ignore_index=True)
-        del img
+        del img, img_vec
 
 
     # Make sure both datasets use the same subject's index in the corect order
@@ -316,4 +330,35 @@ def read_npy_files(input_dir_path, demographic_path):
     # Check if the reindexing created any NaNs
     print('Check NaNs on the reindexed dataframe')
     print(pd.isnull(data_df).sum())
-    return data_df.values, demographic_df
+    return np.array(data_df.values), demographic_df
+
+def resample_brain_mask(save_mask=False):
+    '''
+    This functions takes the original 2mm fsl brain masks and resamples it to
+    1.5mm
+    '''
+
+    # This is a rather big mask originally from fsl. But I wanted to be conservative and
+    # not exclue too much information. The
+    # other masks are smaller
+    PROJECT_ROOT = Path.cwd()
+    brain_mask_path = str(PROJECT_ROOT / 'data'/ 'masks' /
+                          'MNI152_T1_2mm_brain_mask_dil1.nii.gz')
+
+    msk_img = nib.load(brain_mask_path)
+
+    # Load one sample subject and obtain the image affine
+    nib_path = str(PROJECT_ROOT / 'data' / 'SPM'/ 'gm' / 'sub0_gm.nii.gz')
+    nib_img = nib.load(nib_path)
+    mask_img = resample_brain_mask(nib_img, save_mask=True)
+
+    # Resample the original 2mm mask to 1.5mm.
+    resampled_img = nib.processing.resample_from_to(msk_img, nib_img)
+
+    if save_mask:
+        nib.save(resampled_img,
+                 str(PROJECT_ROOT, 'data'/ 'masks'/
+                     'MNI152_T1_1.5mm_brain_masked.nii.gz'))
+    return resampled_img
+
+
