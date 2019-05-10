@@ -65,31 +65,32 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
 
     # --------------------------------------------------------------------------
     # Dimensionality reduction
-    import pdb
-    pdb.set_trace()
-    pca = PCA(n_components=.90)
-    x_train_pca = pca.fit_transform(x_train)
-    x_test_pca = pca.transform(x_train)
+    print('Performing PCA')
+    pca = PCA(n_components=.95)
+    pca.fit(x_train)
+    x_train_pca = pca.transform(x_train)
+    x_test_pca = pca.transform(x_test)
 
     # --------------------------------------------------------------------------
     # Model
-    kernel = DotProduct()
     gpr = GaussianProcessRegressor()
 
     # --------------------------------------------------------------------------
     # Model selection
     # Search space
-    param_grid = {'kernel': [RBF, DotProduct, WhiteKernel]}
+    param_grid = {'kernel': [RBF(), WhiteKernel()]}
 
     # Gridsearch
     internal_cv = KFold(n_splits=5)
-    grid_cv = GridSearchCV(estimator=clf,
+    grid_cv = GridSearchCV(estimator=gpr,
                            param_grid=param_grid,
                            cv=internal_cv,
                            scoring='neg_mean_absolute_error',
-                           verbose=1)
+                           verbose=1,
+                           n_jobs=1)
 
     # --------------------------------------------------------------------------
+    print('Perform Grid Search')
     grid_result = grid_cv.fit(x_train_pca, y_train)
 
     # --------------------------------------------------------------------------
@@ -102,13 +103,14 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
         predictions_df.iloc[row, predictions_df.columns.get_loc('predictions')] = value
 
     # --------------------------------------------------------------------------
+    # import pdb
+    # pdb.set_trace()
     mae_test = mean_absolute_error(y_test, y_test_predicted)
     print('MAE: %.3f ' % mae_test)
 
     mae_cv[i_fold, :] = mae_test
 
     joblib.dump(best_regressor, cv_dir / ('model_%d.joblib' % i_fold))
-    joblib.dump(scaler, cv_dir / ('scaler_%d.joblib' % i_fold))
     joblib.dump(pca, cv_dir / ('pca_%d.joblib' % i_fold))
 
 print('CV results')
@@ -117,20 +119,17 @@ print('MAE: Mean(SD) = %.3f(%.3f)' % (mae_cv.mean(), mae_cv.std()))
 mae_cv_df = pd.DataFrame(columns=['MAE'], data=mae_cv)
 mae_cv_df.to_csv(cv_dir / 'mae_cv.csv', index=False)
 
-predictions_df.to_csv(cv_dir / 'predictions_cv.csv', index=False)
+predictions_df.to_csv(cv_dir / 'predictions_cv_GPR.csv', index=False)
 
 # --------------------------------------------------------------------------
 # --------------------------------------------------------------------------
 # Training on whole data
-scaler_final = RobustScaler()
-x_norm = scaler_final.fit_transform(x)
+pca_final = PCA(n_components=.95)
+x_pca = pca_final.fit_transform(x)
 
-pca_final = PCA(n_components=2)
-x_pca = pca_final.fit_transform(x_norm)
+clf_final = GaussianProcessRegressor()
 
-clf_final = LinearSVR()
-
-param_grid_final = {'C': [2 ** -6, 2 ** -5, 2 ** -4, 2 ** -3, 2 ** -2, 2 ** -1, 2 ** 0, 2 ** 1]}
+param_grid_final = {'kernel': [RBF(), WhiteKernel()]}
 
 internal_cv = KFold(n_splits=5)
 grid_cv_final = GridSearchCV(estimator=clf_final,
@@ -143,5 +142,4 @@ grid_result = grid_cv_final.fit(x_pca, y)
 best_regressor_final = grid_cv_final.best_estimator_
 
 joblib.dump(best_regressor_final, experiment_dir / 'model.joblib')
-joblib.dump(scaler_final, experiment_dir / 'scaler.joblib')
 joblib.dump(pca_final, experiment_dir / 'pca.joblib')
