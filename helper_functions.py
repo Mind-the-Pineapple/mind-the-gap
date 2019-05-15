@@ -288,3 +288,88 @@ def convert_nifty_to_numpy(data_dir, dst):
 
     print("All files created.")
 
+
+def read_npy_reduced_files(input_dir_path, demographic_path, brain_mask_path):
+    input_dir = Path(input_dir_path)
+
+    # Iterate over all subjects and append their data to a dataframe
+    demographic_df = pd.read_csv(demographic_path)
+    demographic_df['filename'] = demographic_df['subject_ID']+'_gm.npy'
+
+    msk_img = nib.load(str(brain_mask_path))
+    mask = msk_img.get_data()
+    max_x, max_y, max_z, min_x, min_y, min_z = find_image_boundary(mask)
+
+    imgs=np.zeros_like(mask)
+    imgs=imgs[min_x:max_x+1,min_y:max_y+1,min_z:max_z+1]
+    imgs=imgs[np.newaxis,:,:,:, np.newaxis]
+
+    # read images
+    for k, npy_filename in enumerate(list(demographic_df['filename'].values[:100])):
+        path = input_dir / npy_filename
+        print(path)
+        img = np.load(str(path))
+        img = np.asarray(img, dtype='float32')
+        img = np.nan_to_num(img)
+        # Use the mask to filter the subject data
+        img_vec = img[min_x:max_x+1,min_y:max_y+1,min_z:max_z+1]
+        # get subject's ID
+        img_vec = img_vec[np.newaxis,:,:,:, np.newaxis]
+        imgs = np.append(imgs, img_vec, axis=0)
+
+        del img, img_vec
+
+    imgs = imgs[1:]
+    return imgs, demographic_df
+
+
+def find_image_boundary(img):
+    min_x = 1000
+    max_x = 0
+    min_y = 1000
+    max_y = 0
+    min_z = 1000
+    max_z = 0
+
+    img_shape = img.shape
+
+    #     X
+    for i in range(0, img_shape[0]):
+        if np.max(img[i, :, :]) > 0:
+            break
+    if min_x > i:
+        min_x = i
+
+    for i in range(img_shape[0] - 1, 0, -1):
+        if np.max(img[i, :, :]) > 0:
+            break
+    if max_x < i:
+        max_x = i
+
+        #     Y
+    for i in range(0, img_shape[1]):
+        if np.max(img[:, i, :]) > 0:
+            break
+    if min_y > i:
+        min_y = i
+
+    for i in range(img_shape[1] - 1, 0, -1):
+        if np.max(img[:, i, :]) > 0:
+            break
+    if max_y < i:
+        max_y = i
+
+        #     Z
+    for i in range(0, img_shape[2]):
+        if np.max(img[:, :, i]) > 0:
+            break
+    if min_z > i:
+        min_z = i
+
+    for i in range(img_shape[2] - 1, 0, -1):
+        if np.max(img[:, :, i]) > 0:
+            break
+    if max_z < i:
+        max_z = i
+
+    return max_x, max_y, max_z, min_x, min_y, min_z
