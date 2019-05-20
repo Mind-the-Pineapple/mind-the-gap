@@ -9,9 +9,7 @@ import time
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import ShuffleSplit
 import tensorflow as tf
-from helper_functions import read_npy_reduced_files
 
 PROJECT_ROOT = Path.cwd()
 
@@ -29,44 +27,103 @@ experiment_dir = output_dir / experiment_name
 experiment_dir.mkdir(exist_ok=True)
 
 # --------------------------------------------------------------------------
-numpy_data_path = PROJECT_ROOT / 'data' / 'SPM' / 'gm'
+tfrecords_path = PROJECT_ROOT / 'data' / 'SPM' / 'gm_train.tfrecords'
 demographic_path = PROJECT_ROOT / 'data' / 'PAC2019_BrainAge_Training.csv'
-brain_mask_path = PROJECT_ROOT / 'data' / 'masks' / 'squared_mask_1.5mm.nii'
-
-# Reading data. If necessary, create new reader in helper_functions.
-data, demographic_df = read_npy_reduced_files(numpy_data_path, demographic_path, str(brain_mask_path))
 
 demographic_df = pd.read_csv(demographic_path, index_col='subject_ID')
 
 # --------------------------------------------------------------------------
-# Using only age
-y = demographic_df['age'].values
-from sklearn.preprocessing import MinMaxScaler
-scaler = MinMaxScaler(feature_range=(-1, 1))
-y = scaler.fit_transform(y[:, np.newaxis])
-
-# If necessary, extract gender and site from demographic_df too.
-
-# --------------------------------------------------------------------------
-rs = ShuffleSplit(n_splits=1, test_size=.25, random_state=random_seed)
-
-# --------------------------------------------------------------------------
-train_idx, test_idx = next(rs.split(data))
-n_subjs = 100
-x_train, x_test = data[train_idx[:n_subjs]], data[test_idx]
-y_train, y_test = y[train_idx[:n_subjs]], y[test_idx]
-
 batch_size = 32
-train_buf = n_subjs
+train_buf = 2000
 
-train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+train_dataset = tf.data.TFRecordDataset(str(tfrecords_path))
+
+image_feature_description = {
+    'height': tf.io.FixedLenFeature([], tf.int64),
+    'width': tf.io.FixedLenFeature([], tf.int64),
+    'depth': tf.io.FixedLenFeature([], tf.int64),
+    'channels': tf.io.FixedLenFeature([], tf.int64),
+    'age': tf.io.FixedLenFeature([], tf.int64),
+    'site': tf.io.FixedLenFeature([], tf.int64),
+    'image': tf.io.FixedLenFeature([], tf.string),
+}
+
+
+def _parse_image_function(example_proto):
+    # Parse the input tf.Example proto using the dictionary above.
+    example = tf.io.parse_single_example(example_proto, image_feature_description)
+    img = tf.io.decode_raw(example['image'], tf.float32)
+    img = tf.reshape(img, [example['height'], example['width'], example['depth'], example['channels']])
+
+    # Scale age [17,90] --> [-1,1]
+    age = example['age']
+    age = (tf.cast(age, dtype=tf.float32) - tf.cast(17.0, dtype=tf.float32)) / tf.cast(90.0, dtype=tf.float32)
+    age = (age - tf.cast(0.5, dtype=tf.float32)) * tf.cast(2.0, dtype=tf.float32)
+
+    return img, age
+
+#
+# def _normalize_y(img, age):
+#     # Scale age [17,90] --> [-1,1]
+#     age = (tf.cast(age, dtype=tf.float32) - tf.cast(17.0, dtype=tf.float32)) / tf.cast(90.0, dtype=tf.float32)
+#     age = (age - tf.cast(0.5, dtype=tf.float32)) * tf.cast(2.0, dtype=tf.float32)
+#     return img, age
+
+
+# train_dataset = train_dataset.map(_parse_image_function)
+train_dataset = train_dataset.map(_parse_image_function, num_parallel_calls=16)
+# train_dataset = train_dataset.map(_normalize_y)
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
+train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
 
 # --------------------------------------------------------------------------
 # Model
-inputs = tf.keras.layers.Input(shape=(95, 121, 97, 1))
-x = tf.keras.layers.Flatten()(inputs)
+# Using JamesNet
+inputs = tf.keras.layers.Input(shape=(94, 120, 96, 1))
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(
+    inputs)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
+    x)
+x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
+
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
+    x)
+x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
+
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
+    x)
+x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
+
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
+    x)
+x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
+
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
+    x)
+x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.Activation(activation='relu')(x)
+x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
+
+x = tf.keras.layers.Flatten()(x)
 prediction = tf.keras.layers.Dense(1, activation='linear')(x)
 
 model = tf.keras.Model(inputs=inputs, outputs=prediction)
@@ -78,6 +135,7 @@ mse = tf.keras.losses.MeanSquaredError()
 # --------------------------------------------------------------------------
 # Optimizer
 nn_optimizer = tf.keras.optimizers.Adam(lr=3e-4)
+
 
 # -------------------------------------------------------------------------------------------------------------
 # Training function
@@ -95,24 +153,17 @@ def train_step(batch_x, batch_y):
 
 # -------------------------------------------------------------------------------------------------------------
 # Training loop
-batch_x, batch_y = next(iter(train_dataset))
-#
-n_epochs = 100000
+n_epochs = 100
 for epoch in range(n_epochs):
-# epoch = 1
     start = time.time()
 
-    # epoch_loss_avg = tf.metrics.Mean()
-    loss_value = train_step(batch_x, batch_y)
-    # epoch_loss_avg(loss_value)
+    epoch_loss_avg = tf.metrics.Mean()
+    for batch, (batch_x, batch_y) in enumerate(train_dataset):
+        loss_value = train_step(batch_x, batch_y)
+        epoch_loss_avg(loss_value)
 
     epoch_time = time.time() - start
     print('{:4d}: TIME: {:.2f} ETA: {:.2f} LOSS: {:.8f}' \
           .format(epoch, epoch_time,
                   epoch_time * (n_epochs - epoch),
-                  # epoch_loss_avg.result()))
-                  loss_value))
-
-
-
-
+                  epoch_loss_avg.result()))

@@ -4,6 +4,7 @@ This script contains functions that will be used in different scripts
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import tensorflow as tf
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -294,82 +295,126 @@ def read_npy_reduced_files(input_dir_path, demographic_path, brain_mask_path):
 
     # Iterate over all subjects and append their data to a dataframe
     demographic_df = pd.read_csv(demographic_path)
-    demographic_df['filename'] = demographic_df['subject_ID']+'_gm.npy'
+    demographic_df['filename'] = demographic_df['subject_ID'] + '_gm.npy'
 
     msk_img = nib.load(str(brain_mask_path))
     mask = msk_img.get_data()
-    max_x, max_y, max_z, min_x, min_y, min_z = find_image_boundary(mask)
+    max_x, max_y, max_z, min_x, min_y, min_z = bbox2_3D(mask)
 
-    imgs=np.zeros_like(mask)
-    imgs=imgs[min_x:max_x+1,min_y:max_y+1,min_z:max_z+1]
-    imgs=imgs[np.newaxis,:,:,:, np.newaxis]
+    imgs = np.zeros((2000, max_x - min_x, max_y - min_y, max_z - min_z, 1))
 
     # read images
-    for k, npy_filename in enumerate(list(demographic_df['filename'].values[:100])):
+    for k, npy_filename in enumerate(list(demographic_df['filename'].values[:1000])):
+        print(k)
         path = input_dir / npy_filename
         print(path)
         img = np.load(str(path))
         img = np.asarray(img, dtype='float32')
         img = np.nan_to_num(img)
         # Use the mask to filter the subject data
-        img_vec = img[min_x:max_x+1,min_y:max_y+1,min_z:max_z+1]
-        # get subject's ID
-        img_vec = img_vec[np.newaxis,:,:,:, np.newaxis]
-        imgs = np.append(imgs, img_vec, axis=0)
-
-        del img, img_vec
+        img_vec = img[min_x:max_x + 1, min_y:max_y + 1, min_z:max_z + 1]
+        imgs[k, :, :, :, 0] = img_vec
 
     imgs = imgs[1:]
     return imgs, demographic_df
 
 
-def find_image_boundary(img):
-    min_x = 1000
-    max_x = 0
-    min_y = 1000
-    max_y = 0
-    min_z = 1000
-    max_z = 0
 
-    img_shape = img.shape
+def bbox2_3D(img):
+    """Find the bounding box limits of the 3D array where the elements in not equal to 0.
 
-    #     X
-    for i in range(0, img_shape[0]):
-        if np.max(img[i, :, :]) > 0:
-            break
-    if min_x > i:
-        min_x = i
+    These min max values will be used to minimize the dimension of the cube that will be feed to the neural network.
 
-    for i in range(img_shape[0] - 1, 0, -1):
-        if np.max(img[i, :, :]) > 0:
-            break
-    if max_x < i:
-        max_x = i
+    Parameters
+    ----------
+    img: ndarray
+        MRI data with format (Height, Width, Depth, Channels).
 
-        #     Y
-    for i in range(0, img_shape[1]):
-        if np.max(img[:, i, :]) > 0:
-            break
-    if min_y > i:
-        min_y = i
+    Returns
+    -------
+        The index that start to have values different to zero.
 
-    for i in range(img_shape[1] - 1, 0, -1):
-        if np.max(img[:, i, :]) > 0:
-            break
-    if max_y < i:
-        max_y = i
+    """
+    x = np.any(img, axis=(1, 2))
+    y = np.any(img, axis=(0, 2))
+    z = np.any(img, axis=(0, 1))
 
-        #     Z
-    for i in range(0, img_shape[2]):
-        if np.max(img[:, :, i]) > 0:
-            break
-    if min_z > i:
-        min_z = i
+    min_x, max_x = np.where(x)[0][[0, -1]]
+    min_y, max_y = np.where(y)[0][[0, -1]]
+    min_z, max_z = np.where(z)[0][[0, -1]]
 
-    for i in range(img_shape[2] - 1, 0, -1):
-        if np.max(img[:, :, i]) > 0:
-            break
-    if max_z < i:
-        max_z = i
+    return min_x, max_x, min_y, max_y, min_z, max_z
 
-    return max_x, max_y, max_z, min_x, min_y, min_z
+
+def _bytes_feature(value):
+    """Returns a bytes_list from a string / byte."""
+    if isinstance(value, type(tf.constant(0))):
+        value = value.numpy()  # BytesList won't unpack a string from an EagerTensor.
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+
+def _float_feature(value):
+    """Returns a float_list from a float / double."""
+    if not isinstance(value, list) and not isinstance(value, np.ndarray):
+        value = [value]
+    return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+
+
+def _int64_feature(value):
+    """Returns an int64_list from a bool / enum / int / uint."""
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+
+
+def create_tfrecords(input_dir_path, output_path, demographic_path, brain_mask_path, indexes):
+    """
+    :param input_dir_path: String with path to the folder with numpy files
+    :param output_path: String with path of the generated single file with the format tfrecord
+    :param demographic_path: String with path to the CSV file
+    :param brain_mask_path: String with path to the mask nifti file
+    :param indexes: list of index of subjects to include in the tfrecord file
+    :return:
+    """
+    input_dir = Path(input_dir_path)
+    demographic_df = pd.read_csv(demographic_path)
+    demographic_df['filename'] = demographic_df['subject_ID'] + '_gm.npy'
+
+    msk_img = nib.load(str(brain_mask_path))
+    mask = msk_img.get_fdata()
+    mask[mask < 1e-8] = 0
+    min_x, max_x, min_y, max_y, min_z, max_z = bbox2_3D(mask)
+
+    # imgs = np.zeros((2640, max_x - min_x, max_y - min_y, max_z - min_z, 1))
+    selected_subjects = demographic_df.iloc[indexes]
+    with tf.io.TFRecordWriter(output_path) as writer:
+
+        for k, npy_filename in enumerate(list(selected_subjects['filename'].values)):
+            print(k)
+            path = input_dir / npy_filename
+            print(path)
+            img = np.load(str(path))
+            img = np.asarray(img, dtype='float32')
+            img = np.nan_to_num(img)
+            # Use the mask to filter the subject data
+            img_vec = img[min_x:max_x, min_y:max_y, min_z:max_z, np.newaxis]
+
+            def image_example(img, age, site):
+                image_shape = img.shape
+
+                feature = {
+                    'height': _int64_feature(image_shape[0]),
+                    'width': _int64_feature(image_shape[1]),
+                    'depth': _int64_feature(image_shape[2]),
+                    'channels': _int64_feature(image_shape[3]),
+                    'age': _int64_feature(age),
+                    'site': _int64_feature(site),
+                    'image': _bytes_feature(img.tostring()),
+                }
+
+                return tf.train.Example(features=tf.train.Features(feature=feature))
+
+
+            tf_example = image_example(img_vec,
+                                       int(selected_subjects.iloc[k]['age']),
+                                       int(selected_subjects.iloc[k]['site']))
+
+            writer.write(tf_example.SerializeToString())
