@@ -3,6 +3,7 @@ This script contains functions that will be used in different scripts
 """
 from pathlib import Path
 
+from sklearn.preprocessing import OneHotEncoder
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -63,6 +64,55 @@ def read_freesurfer_example(data_dir, demographic_path):
 
     return x, demographic_df
 
+
+def read_freesurfer(data_dir, demographic_path, columns_name):
+    """
+    Read volumetric data and demographic data. Note: demographic file is included here to make sure that the
+    x data and the demographic data follows the same subject order.
+
+    Args:
+        data_dir: String with path to directory with csv files.
+        demographic_path: String with path to demographic data.
+        columns_name: List of columns name
+
+    Returns:
+        x: Numpy array with neuroimaging data.
+        demographic_df: Pandas DataFrame with all demographic data.
+    """
+    freesurfer_dir = Path(data_dir)
+
+    aseg_df = pd.read_csv(freesurfer_dir / 'aseg_vol.txt', sep='\t', index_col='Measure:volume')
+    lh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'lh_aparc_vol.txt', sep='\t', index_col='lh.aparc.volume')
+    rh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'rh_aparc_vol.txt', sep='\t', index_col='rh.aparc.volume')
+    lh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'lh_aparc_thick.txt', sep='\t', index_col='lh.aparc.thickness')
+    rh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'rh_aparc_thick.txt', sep='\t', index_col='rh.aparc.thickness')
+    lh_aparc_area_df = pd.read_csv(freesurfer_dir / 'lh_aparc_area.txt', sep='\t', index_col='lh.aparc.area')
+    rh_aparc_area_df = pd.read_csv(freesurfer_dir / 'rh_aparc_area.txt', sep='\t', index_col='rh.aparc.area')
+    lh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'lh_aparc_curv.txt', sep='\t', index_col='lh.aparc.meancurv')
+    rh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'rh_aparc_curv.txt', sep='\t', index_col='rh.aparc.meancurv')
+
+    merged = pd.merge(aseg_df, lh_aparc_vol_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_vol_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_thick_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_thick_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_area_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_area_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_curv_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_curv_df, left_index=True, right_index=True)
+
+    merged.index = merged.index.str.replace('_raw/', '')
+
+    demographic_df = pd.read_csv(demographic_path, index_col='subject_ID')
+    merged_df = demographic_df.merge(merged, left_index=True, right_index=True, how='right')
+
+    # tiv = merged_df['EstimatedTotalIntraCranialVol']
+
+    demographic_df = pd.DataFrame(merged_df[demographic_df.columns])
+    x_df = pd.DataFrame(merged_df[columns_name])
+    # x = x_df.values.astype('float32') / tiv.values[:,np.newaxis]
+    x = x_df.values.astype('float32')
+
+    return x, demographic_df
 
 def read_gram_matrix(gram_matrix_path, demographic_path):
     demographic_df = pd.read_csv(demographic_path)
@@ -288,3 +338,219 @@ def convert_nifty_to_numpy(data_dir, dst):
 
     print("All files created.")
 
+
+def create_gram_matrix_w_site_info_train_data(input_dir_path, output_path, demographic_path, site_weight=10000):
+    """
+    Computes the Gram matrix for the SVM method.
+
+    Reference: http://scikit-learn.org/stable/modules/svm.html#using-the-gram-matrix
+    """
+    demographic_df = pd.read_csv(demographic_path, index_col='subject_ID')
+    foo = demographic_df.site.values[:, np.newaxis]
+    enc = OneHotEncoder(sparse=False)
+    enc.fit(foo)
+
+    input_dir = Path(input_dir_path)
+    step_size = 600
+
+    img_paths = list(input_dir.glob('*.npy'))
+
+    n_samples = len(img_paths)
+
+    K = np.float64(np.zeros((n_samples, n_samples)))
+
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):  #
+
+        it = i + 1
+        max_it = int(np.ceil(n_samples / np.float(step_size)))
+        print(" outer loop iteration: %d of %d." % (it, max_it))
+
+        # generate indices and then paths for this block
+        start_ind_1 = i * step_size
+        stop_ind_1 = min(start_ind_1 + step_size, n_samples)
+        block_paths_1 = img_paths[start_ind_1:stop_ind_1]
+
+        # read in the images in this block
+        images_1 = []
+        for k, path in enumerate(block_paths_1):
+            subject_id = path.stem.split('_')[0]
+            subject_site = np.array([demographic_df.loc[subject_id].site])
+            onehot_encoded = enc.transform(subject_site[:,np.newaxis])
+
+            img = np.load(str(path))
+            img = np.asarray(img, dtype='float64')
+            img = np.nan_to_num(img)
+            img_vec = np.reshape(img, np.product(img.shape))
+
+            img_vec = np.append(img_vec,site_weight*onehot_encoded[0])
+            images_1.append(img_vec)
+            del img
+        images_1 = np.array(images_1)
+        for j in range(i + 1):
+
+            it = j + 1
+            max_it = i + 1
+
+            print(" inner loop iteration: %d of %d." % (it, max_it))
+
+            # if i = j, then sets of image data are the same - no need to load
+            if i == j:
+
+                start_ind_2 = start_ind_1
+                stop_ind_2 = stop_ind_1
+                images_2 = images_1
+
+            # if i !=j, read in a different block of images
+            else:
+                start_ind_2 = j * step_size
+                stop_ind_2 = min(start_ind_2 + step_size, n_samples)
+                block_paths_2 = img_paths[start_ind_2:stop_ind_2]
+
+                images_2 = []
+                for k, path in enumerate(block_paths_2):
+                    subject_id = path.stem.split('_')[0]
+                    subject_site = np.array([demographic_df.loc[subject_id].site])
+                    onehot_encoded = enc.transform(subject_site[:, np.newaxis])
+
+                    img = np.load(str(path))
+                    img = np.asarray(img, dtype='float64')
+                    img_vec = np.reshape(img, np.product(img.shape))
+                    img_vec = np.append(img_vec, site_weight*onehot_encoded[0])
+
+                    images_2.append(img_vec)
+                    del img
+                images_2 = np.array(images_2)
+
+            block_K = np.dot(images_1, np.transpose(images_2))
+            K[start_ind_1:stop_ind_1, start_ind_2:stop_ind_2] = block_K
+            K[start_ind_2:stop_ind_2, start_ind_1:stop_ind_1] = np.transpose(block_K)
+
+    subj_id = []
+
+    for fullpath in img_paths:
+        subj_id.append(fullpath.stem.split('_')[0])
+
+    gram_df = pd.DataFrame(columns=subj_id, data=K)
+    gram_df['subject_ID'] = subj_id
+    gram_df = gram_df.set_index('subject_ID')
+
+    gram_df.to_csv(output_path)
+
+
+def create_wm_and_gm_w_site_info_gram_matrix_train_data(wm_dir_path, gm_dir_path, output_path, demographic_path,
+                                                        site_weight=10000):
+    """
+    Computes the Gram matrix for the SVM method.
+
+    Reference: http://scikit-learn.org/stable/modules/svm.html#using-the-gram-matrix
+    """
+    demographic_df = pd.read_csv(demographic_path, index_col='subject_ID')
+    foo = demographic_df.site.values[:, np.newaxis]
+    enc = OneHotEncoder(sparse=False)
+    enc.fit(foo)
+
+    wm_dir = Path(wm_dir_path)
+    gm_dir = Path(gm_dir_path)
+    step_size = 400
+
+    img_gm_paths = sorted(list(gm_dir.glob('*.npy')))
+    img_wm_paths = sorted(list(wm_dir.glob('*.npy')))
+
+    n_samples = len(img_wm_paths)
+
+    K = np.float64(np.zeros((n_samples, n_samples)))
+
+    for i in range(int(np.ceil(n_samples / np.float(step_size)))):  #
+
+        it = i + 1
+        max_it = int(np.ceil(n_samples / np.float(step_size)))
+        print(" outer loop iteration: %d of %d." % (it, max_it))
+
+        # generate indices and then paths for this block
+        start_ind_1 = i * step_size
+        stop_ind_1 = min(start_ind_1 + step_size, n_samples)
+        block_paths_1_wm = img_wm_paths[start_ind_1:stop_ind_1]
+        block_paths_1_gm = img_gm_paths[start_ind_1:stop_ind_1]
+
+        # read in the images in this block
+        images_1 = []
+        for k, (path_wm, path_gm) in enumerate(zip(block_paths_1_wm, block_paths_1_gm)):
+            subject_id = path_wm.stem.split('_')[0]
+            subject_site = np.array([demographic_df.loc[subject_id].site])
+            onehot_encoded = enc.transform(subject_site[:,np.newaxis])
+
+            img_wm = np.load(str(path_wm))
+            img_wm = np.asarray(img_wm, dtype='float64')
+            img_wm = np.nan_to_num(img_wm)
+            img_vec_wm = np.reshape(img_wm, np.product(img_wm.shape))
+
+            img_gm = np.load(str(path_gm))
+            img_gm = np.asarray(img_gm, dtype='float64')
+            img_gm = np.nan_to_num(img_gm)
+            img_vec_gm = np.reshape(img_gm, np.product(img_wm.shape))
+
+            img_vec = np.append(img_vec_wm, img_vec_gm)
+            img_vec = np.append(img_vec, site_weight*onehot_encoded[0])
+
+            images_1.append(img_vec)
+            del img_wm, img_gm
+        images_1 = np.array(images_1)
+        for j in range(i + 1):
+
+            it = j + 1
+            max_it = i + 1
+
+            print(" inner loop iteration: %d of %d." % (it, max_it))
+
+            # if i = j, then sets of image data are the same - no need to load
+            if i == j:
+
+                start_ind_2 = start_ind_1
+                stop_ind_2 = stop_ind_1
+                images_2 = images_1
+
+            # if i !=j, read in a different block of images
+            else:
+                start_ind_2 = j * step_size
+                stop_ind_2 = min(start_ind_2 + step_size, n_samples)
+                block_paths_2_wm = img_wm_paths[start_ind_2:stop_ind_2]
+                block_paths_2_gm = img_gm_paths[start_ind_2:stop_ind_2]
+
+
+                images_2 = []
+                for k, (path_wm, path_gm) in enumerate(zip(block_paths_2_wm, block_paths_2_gm)):
+                    subject_id = path_wm.stem.split('_')[0]
+                    subject_site = np.array([demographic_df.loc[subject_id].site])
+                    onehot_encoded = enc.transform(subject_site[:, np.newaxis])
+
+                    img_wm = np.load(str(path_wm))
+                    img_wm = np.asarray(img_wm, dtype='float64')
+                    img_wm = np.nan_to_num(img_wm)
+                    img_vec_wm = np.reshape(img_wm, np.product(img_wm.shape))
+
+                    img_gm = np.load(str(path_gm))
+                    img_gm = np.asarray(img_gm, dtype='float64')
+                    img_gm = np.nan_to_num(img_gm)
+                    img_vec_gm = np.reshape(img_gm, np.product(img_wm.shape))
+
+                    img_vec = np.append(img_vec_wm, img_vec_gm)
+                    img_vec = np.append(img_vec, site_weight*onehot_encoded[0])
+
+                    images_2.append(img_vec)
+                    del img_wm, img_gm
+                images_2 = np.array(images_2)
+
+            block_K = np.dot(images_1, np.transpose(images_2))
+            K[start_ind_1:stop_ind_1, start_ind_2:stop_ind_2] = block_K
+            K[start_ind_2:stop_ind_2, start_ind_1:stop_ind_1] = np.transpose(block_K)
+
+    subj_id = []
+
+    for fullpath in img_gm_paths:
+        subj_id.append(fullpath.stem.split('_')[0])
+
+    gram_df = pd.DataFrame(columns=subj_id, data=K)
+    gram_df['subject_ID'] = subj_id
+    gram_df = gram_df.set_index('subject_ID')
+
+    gram_df.to_csv(output_path)
