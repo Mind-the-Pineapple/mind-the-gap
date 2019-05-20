@@ -586,32 +586,26 @@ def read_npy_files(input_dir_path, demographic_path, use_mask=False):
     print(pd.isnull(data_df).sum())
     return np.array(data_df.values), demographic_df
 
-def resample_brain_mask(save_mask=False):
+def resample_brain_mask(brain_mask_path, save_path, save_mask=False):
     '''
     This functions takes the original 2mm fsl brain masks and resamples it to
     1.5mm
     '''
-
+    PROJECT_ROOT = Path.cwd()
     # This is a rather big mask originally from fsl. But I wanted to be conservative and
     # not exclue too much information. The
     # other masks are smaller
-    PROJECT_ROOT = Path.cwd()
-    brain_mask_path = str(PROJECT_ROOT / 'data'/ 'masks' /
-                          'MNI152_T1_2mm_brain_mask_dil1.nii.gz')
 
     msk_img = nib.load(brain_mask_path)
 
     # Load one sample subject and obtain the image affine
     nib_path = str(PROJECT_ROOT / 'data' / 'SPM'/ 'gm' / 'sub0_gm.nii.gz')
     nib_img = nib.load(nib_path)
-    mask_img = resample_brain_mask(nib_img, save_mask=True)
 
     # Resample the original 2mm mask to 1.5mm.
     resampled_img = nib.processing.resample_from_to(msk_img, nib_img)
 
     if save_mask:
-        nib.save(resampled_img,
-                 str(PROJECT_ROOT, 'data'/ 'masks'/
-                     'MNI152_T1_1.5mm_brain_masked.nii.gz'))
+        nib.save(resampled_img, save_path)
     return resampled_img
 
