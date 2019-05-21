@@ -23,7 +23,7 @@ Install dependencies
 Each experiment will be stored in a different .py file. Please, add new readers in the helper_functions.
 
 ## Results
-**James et al. 2017: 4.16 years)**
+**James et al. 2017: CNNs 4.16 years/GPR 4.41 years**
 
 | Experiment | Script | MAE (years) |
 |---|---|:---:|
