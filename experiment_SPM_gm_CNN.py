@@ -57,68 +57,52 @@ def _parse_image_function(example_proto):
 
     # Scale age [17,90] --> [-1,1]
     age = example['age']
-    age = (tf.cast(age, dtype=tf.float32) - tf.cast(17.0, dtype=tf.float32)) / tf.cast(90.0, dtype=tf.float32)
+    age = (tf.cast(age, dtype=tf.float32) - tf.cast(17.0, dtype=tf.float32)) / tf.cast((90.0-17.0), dtype=tf.float32)
     age = (age - tf.cast(0.5, dtype=tf.float32)) * tf.cast(2.0, dtype=tf.float32)
 
     return img, age
 
-#
-# def _normalize_y(img, age):
-#     # Scale age [17,90] --> [-1,1]
-#     age = (tf.cast(age, dtype=tf.float32) - tf.cast(17.0, dtype=tf.float32)) / tf.cast(90.0, dtype=tf.float32)
-#     age = (age - tf.cast(0.5, dtype=tf.float32)) * tf.cast(2.0, dtype=tf.float32)
-#     return img, age
 
-
-# train_dataset = train_dataset.map(_parse_image_function)
-train_dataset = train_dataset.map(_parse_image_function, num_parallel_calls=16)
-# train_dataset = train_dataset.map(_normalize_y)
-train_dataset = train_dataset.shuffle(buffer_size=train_buf)
+train_dataset = train_dataset.map(_parse_image_function, num_parallel_calls=10)
+train_dataset = train_dataset.shuffle(buffer_size=600)
 train_dataset = train_dataset.batch(batch_size)
 train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
 
 # --------------------------------------------------------------------------
 # Model
 # Using JamesNet
 inputs = tf.keras.layers.Input(shape=(94, 120, 96, 1))
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(
-    inputs)
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(inputs)
 x = tf.keras.layers.Activation(activation='relu')(x)
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
-    x)
+x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(x)
 x = tf.keras.layers.BatchNormalization()(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
 x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
 
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
+x = tf.keras.layers.Conv3D(filters=16, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
-    x)
+x = tf.keras.layers.Conv3D(filters=16, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(x)
 x = tf.keras.layers.BatchNormalization()(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
 x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
 
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
+x = tf.keras.layers.Conv3D(filters=32, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
-    x)
+x = tf.keras.layers.Conv3D(filters=32, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(x)
 x = tf.keras.layers.BatchNormalization()(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
 x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
 
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
+x = tf.keras.layers.Conv3D(filters=64, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
-    x)
+x = tf.keras.layers.Conv3D(filters=46, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(x)
 x = tf.keras.layers.BatchNormalization()(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
 x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
 
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
+x = tf.keras.layers.Conv3D(filters=128, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='True')(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
-x = tf.keras.layers.Conv3D(filters=8, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(
-    x)
+x = tf.keras.layers.Conv3D(filters=128, kernel_size=3, strides=1, padding='same', activation='linear', use_bias='False')(x)
 x = tf.keras.layers.BatchNormalization()(x)
 x = tf.keras.layers.Activation(activation='relu')(x)
 x = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), strides=2, padding='same')(x)
