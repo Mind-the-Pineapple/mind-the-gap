@@ -65,6 +65,55 @@ def read_freesurfer_example(data_dir, demographic_path):
     return x, demographic_df
 
 
+def read_freesurfer_all(data_dir, demographic_path):
+    """
+    Read volumetric data and demographic data. Note: demographic file is included here to make sure that the
+    x data and the demographic data follows the same subject order.
+
+    Args:
+        data_dir: String with path to directory with csv files.
+        demographic_path: String with path to demographic data.
+        columns_name: List of columns name
+
+    Returns:
+        x: Numpy array with neuroimaging data.
+        demographic_df: Pandas DataFrame with all demographic data.
+    """
+    freesurfer_dir = Path(data_dir)
+
+    aseg_df = pd.read_csv(freesurfer_dir / 'aseg_vol.txt', sep='\t', index_col='Measure:volume')
+    lh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'lh_aparc_vol.txt', sep='\t', index_col='lh.aparc.volume')
+    rh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'rh_aparc_vol.txt', sep='\t', index_col='rh.aparc.volume')
+    lh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'lh_aparc_thick.txt', sep='\t', index_col='lh.aparc.thickness')
+    rh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'rh_aparc_thick.txt', sep='\t', index_col='rh.aparc.thickness')
+    lh_aparc_area_df = pd.read_csv(freesurfer_dir / 'lh_aparc_area.txt', sep='\t', index_col='lh.aparc.area')
+    rh_aparc_area_df = pd.read_csv(freesurfer_dir / 'rh_aparc_area.txt', sep='\t', index_col='rh.aparc.area')
+    lh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'lh_aparc_curv.txt', sep='\t', index_col='lh.aparc.meancurv')
+    rh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'rh_aparc_curv.txt', sep='\t', index_col='rh.aparc.meancurv')
+
+    merged = pd.merge(aseg_df, lh_aparc_vol_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_vol_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_thick_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_thick_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_area_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_area_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_curv_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_curv_df, left_index=True, right_index=True)
+
+    merged.index = merged.index.str.replace('_raw/', '')
+
+    demographic_df = pd.read_csv(demographic_path, index_col='subject_ID')
+    merged_df = demographic_df.merge(merged, left_index=True, right_index=True, how='right')
+
+    demographic_df = pd.DataFrame(merged_df[demographic_df.columns])
+
+    merged_df = merged_df.drop(demographic_df.columns, axis=1)
+    x = merged_df.values
+
+    return x, demographic_df
+
+
+
 def read_freesurfer(data_dir, demographic_path, columns_name):
     """
     Read volumetric data and demographic data. Note: demographic file is included here to make sure that the
