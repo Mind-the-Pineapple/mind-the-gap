@@ -6,11 +6,12 @@ import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.metrics import mean_absolute_error
+from sklearn.metrics.pairwise import pairwise_kernels
 from sklearn.model_selection import KFold, GridSearchCV
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, DotProduct, WhiteKernel
 
-from helper_functions import read_npy_files
+from helper_functions import read_gram_matrix
 
 PROJECT_ROOT = Path.cwd()
 
@@ -32,14 +33,11 @@ cv_dir.mkdir(exist_ok=True)
 
 # --------------------------------------------------------------------------
 # Input data directory (plz, feel free to use NAN shared folder)
-input_dir = PROJECT_ROOT / 'data' / 'SPM' /'np' / 'gm'
+gram_matrix_path = PROJECT_ROOT / 'data' / 'gram' / 'gm.csv'
 demographic_path = PROJECT_ROOT / 'data' / 'PAC2019_BrainAge_Training.csv'
 
-# Reading data. If necessary, create new reader in helper_functions.
-x, demographic_df = read_npy_files(str(input_dir), str(demographic_path),
-                                   use_mask=True)
-x = [data[0] for data in x]
-x = np.array(x)
+x, demographic_df = read_gram_matrix(str(gram_matrix_path),
+                                     str(demographic_path))
 # --------------------------------------------------------------------------
 # Usiing only age
 y = demographic_df['age'].values
@@ -64,23 +62,15 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
     print('CV iteration: %d' % (i_fold + 1))
 
     # --------------------------------------------------------------------------
-    # Dimensionality reduction
-    print('Performing PCA')
-    pca = PCA(n_components=.95)
-    pca.fit(x_train)
-    x_train_pca = pca.transform(x_train)
-    x_test_pca = pca.transform(x_test)
-
-    # --------------------------------------------------------------------------
     # Model
     gpr = GaussianProcessRegressor()
 
+    X = np.atleast_2d(x)
+    gramm_kernel = pairwise_kernels(X, metric='precomputed',filter_params=False)
     # --------------------------------------------------------------------------
     # Model selection
     # Search space
-    param_grid = [{'kernel': [RBF()]},
-                  {'kernel': [DotProduct()], 'alpha':[1e-2, 1]}
-                 ]
+    param_grid = {'kernel': [RBF(), WhiteKernel(), gramm_kernel]}
 
     # Gridsearch
     internal_cv = KFold(n_splits=5)
@@ -93,13 +83,13 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
 
     # --------------------------------------------------------------------------
     print('Perform Grid Search')
-    grid_result = grid_cv.fit(x_train_pca, y_train)
+    grid_result = grid_cv.fit(x_train, y_train)
 
     # --------------------------------------------------------------------------
     best_regressor = grid_cv.best_estimator_
 
     # --------------------------------------------------------------------------
-    y_test_predicted = best_regressor.predict(x_test_pca)
+    y_test_predicted = best_regressor.predict(x_test)
 
     for row, value in zip(test_idx, y_test_predicted):
         predictions_df.iloc[row, predictions_df.columns.get_loc('predictions')] = value
@@ -131,9 +121,7 @@ x_pca = pca_final.fit_transform(x)
 
 clf_final = GaussianProcessRegressor()
 
-param_grid_final = [{'kernel': [RBF()]},
-              {'kernel': [DotProduct()], 'alpha':[1e-2, 1]}
-                 ]
+param_grid_final = {'kernel': [RBF(), WhiteKernel()]}
 
 internal_cv = KFold(n_splits=5)
 grid_cv_final = GridSearchCV(estimator=clf_final,

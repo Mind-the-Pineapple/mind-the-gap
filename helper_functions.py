@@ -81,15 +81,15 @@ def read_freesurfer(data_dir, demographic_path, columns_name):
     """
     freesurfer_dir = Path(data_dir)
 
-    aseg_df = pd.read_csv(freesurfer_dir / 'aseg_vol.txt', sep='\t', index_col='Measure:volume')
-    lh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'lh_aparc_vol.txt', sep='\t', index_col='lh.aparc.volume')
-    rh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'rh_aparc_vol.txt', sep='\t', index_col='rh.aparc.volume')
-    lh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'lh_aparc_thick.txt', sep='\t', index_col='lh.aparc.thickness')
-    rh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'rh_aparc_thick.txt', sep='\t', index_col='rh.aparc.thickness')
-    lh_aparc_area_df = pd.read_csv(freesurfer_dir / 'lh_aparc_area.txt', sep='\t', index_col='lh.aparc.area')
-    rh_aparc_area_df = pd.read_csv(freesurfer_dir / 'rh_aparc_area.txt', sep='\t', index_col='rh.aparc.area')
-    lh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'lh_aparc_curv.txt', sep='\t', index_col='lh.aparc.meancurv')
-    rh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'rh_aparc_curv.txt', sep='\t', index_col='rh.aparc.meancurv')
+    aseg_df = pd.read_csv(freesurfer_dir / 'aseg_vol.csv', index_col='Measure:volume')
+    lh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'lh_aparc_vol.csv', index_col='lh.aparc.volume')
+    rh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'rh_aparc_vol.csv', index_col='rh.aparc.volume')
+    lh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'lh_aparc_thick.csv', index_col='lh.aparc.thickness')
+    rh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'rh_aparc_thick.csv', index_col='rh.aparc.thickness')
+    lh_aparc_area_df = pd.read_csv(freesurfer_dir / 'lh_aparc_area.csv', index_col='lh.aparc.area')
+    rh_aparc_area_df = pd.read_csv(freesurfer_dir / 'rh_aparc_area.csv', index_col='rh.aparc.area')
+    lh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'lh_aparc_curv.csv', index_col='lh.aparc.meancurv')
+    rh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'rh_aparc_curv.csv', index_col='rh.aparc.meancurv')
 
     merged = pd.merge(aseg_df, lh_aparc_vol_df, left_index=True, right_index=True)
     merged = pd.merge(merged, rh_aparc_vol_df, left_index=True, right_index=True)
@@ -310,6 +310,7 @@ def create_wm_and_gm_gram_matrix_train_data(wm_dir_path, gm_dir_path, output_pat
     gram_df = gram_df.set_index('subject_ID')
 
     gram_df.to_csv(output_path)
+
 
 def convert_nifty_to_numpy(data_dir, dst):
     """
