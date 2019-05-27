@@ -35,7 +35,11 @@ An Ubuntu 18.04 Singularity container with basic Python 3.6.6 and packages
          matplotlib==3.0.3\
          nibabel==2.4.0\
          scikit-learn==0.20.3\
-         joblib==0.13.2"
+         joblib==0.13.2\
+         TPOT==0.9.6\
+         joblib==0.13.1\
+         ipython==7.5.0\
+         xgboost=0.80"
  
     # Check if the project folder exists and if not create it
     if [ ! -d /code ]; then mkdir /code; fi
