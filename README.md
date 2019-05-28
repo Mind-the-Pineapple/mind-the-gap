@@ -18,7 +18,7 @@ Install virtualenv and creating a new virtual environment:
 Install dependencies
 
     pip3 install -r requirements.txt
-    
+
 ## Organization
 Each experiment will be stored in a different .py file. Please, add new readers in the helper_functions.
 
@@ -71,3 +71,6 @@ GM+WM (metric MAE and 3 KFOLD CV for 1_per_site )
 | linear_gm | experiment_SPM_gm_Linear.py | 13.609(0.397) |
 | linear_wm_nn | experiment_SPM_wm_Linear_Keras.py | 6.530(0.110) |
 | linear_wm | experiment_SPM_wm_Linear.py | 13.613(0.385) |
+| freesurfer_curv_GPR | experiment_freesurfer_curv_GPR.py | 7.200 |
+| freesurfer_thk_vol_GPR | experiment_freesurfer_thk_vol_GPR.py | 6.385 |
+| freesurfer_thk_vol_curv_GPR | experiment_freesurfer_thk_vol_curv_GPR.py | 6.132 |
