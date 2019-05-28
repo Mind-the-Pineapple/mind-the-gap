@@ -2,7 +2,7 @@
 Experiment using Linear GPR on freesurfer volume data.
 
 Results:
-MAE: Mean(SD) =
+MAE: Mean(SD) = 7.170(0.163)
 """
 from pathlib import Path
 
