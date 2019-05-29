@@ -1,0 +1,18 @@
+#!/bin/bash --login
+# How much memory needed *per core*
+#$ -l h_vmem=1G
+
+# Which operating system to use
+#$ -l cns_os=el7
+
+# Which queues the job should use:
+# NOTE: mpi use multiple cores on different machines
+#       smp use multiple cores on the same machine
+#$ -pe smp 4
+
+# Where to save the STDOUT and STDERR
+#$ -o ~/Code/mind-the-gap/singularity/logs
+#$ -e ~/Code/mind-the-gap/singularity/logs
+
+/home/k1506210/Code/mind-the-gap/singularity/exec_sing.sh /code/singularity/neuroenvpy.sh \
+/code/tpot_exp/tpot_analysis.py -njobs 4 -sites 3
