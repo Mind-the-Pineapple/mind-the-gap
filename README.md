@@ -60,3 +60,14 @@ GM+WM (metric MAE and 3 KFOLD CV for 1_per_site )
 | 14 | 5.491 | 5.497 | 7.070(0.820) | 230
 | 15 | 4.485 | 4.255 | 1.159(0.374) | 19
 | 16 | 3.819 | 3.625 | 2.447(0.483) | 29
+
+### Linea rmodels
+| Experiment | Script | MAE (years) |
+|---|---|:---:|
+| freesurfer_Linear | experiment_Freesurfer_Linear.py | 7.200(0.157) |
+| linear_freesurfer_nn | experiment_FreeSurfer_Linear_Keras.py | 7.109(0.345) |
+| linear_freesurfer_nn_w_sites | experiment_FreeSurfer_Linear_Keras_w_sites.py | 7.143 (0.332) |
+| linear_gm_nn | experiment_SPM_gm_Linear_Keras.py | 5.803(0.053) |
+| linear_gm | experiment_SPM_gm_Linear.py | 13.609(0.397) |
+| linear_wm_nn | experiment_SPM_wm_Linear_Keras.py | 6.530(0.110) |
+| linear_wm | experiment_SPM_wm_Linear.py | 13.613(0.385) |
