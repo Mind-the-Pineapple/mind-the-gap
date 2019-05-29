@@ -116,7 +116,7 @@ print('MAE: Mean(SD) = %.3f(%.3f)' % (mae_cv.mean(), mae_cv.std()))
 mae_cv_df = pd.DataFrame(columns=['MAE'], data=mae_cv)
 mae_cv_df.to_csv(cv_dir / 'mae_cv.csv', index=False)
 
-predictions_df.to_csv(cv_dir / 'predictions_cv.csv', index=False)
+predictions_df.to_csv(cv_dir / 'predictions_cv.csv')
 
 # --------------------------------------------------------------------------
 # --------------------------------------------------------------------------

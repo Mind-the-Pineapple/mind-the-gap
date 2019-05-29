@@ -111,6 +111,7 @@ def read_freesurfer(data_dir, demographic_path, columns_name):
     x_df = pd.DataFrame(merged_df[columns_name])
     # x = x_df.values.astype('float32') / tiv.values[:,np.newaxis]
     x = x_df.values.astype('float32')
+    demographic_df.index.names = ['subject_ID']
 
     return x, demographic_df
 
