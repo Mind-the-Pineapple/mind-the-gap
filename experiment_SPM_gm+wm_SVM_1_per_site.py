@@ -24,16 +24,7 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # --------------------------------------------------------------------------
-# Create experiment's output directory
 output_dir = PROJECT_ROOT / 'output' / 'experiments'
-output_dir.mkdir(exist_ok=True)
-#
-# experiment_name = 'SPM_wm+gm_SVM_1_per_site'  # Change here*
-# experiment_dir = output_dir / experiment_name
-# experiment_dir.mkdir(exist_ok=True)
-#
-# cv_dir = experiment_dir / 'cv'
-# cv_dir.mkdir(exist_ok=True)
 
 # --------------------------------------------------------------------------
 # Input data directory (plz, feel free to use NAN shared folder)
@@ -70,23 +61,17 @@ for i_site in np.unique(sites):
     for i_fold, (train_idx, test_idx) in enumerate(kf.split(x_red, y_red)):
         x_train, x_test = x_red[train_idx, :][:, train_idx], x_red[test_idx, :][:, train_idx]
         y_train, y_test = y_red[train_idx], y_red[test_idx]
-        # sites_train, sites_test = sites[train_idx], sites[test_idx]
 
-        # print('CV iteration: %d' % (i_fold + 1))
-
-    # clfs = []
-    # for i_site in np.unique(sites_train):
-    # i_site = 0
-    # --------------------------------------------------------------------------
-    # Model
+        # --------------------------------------------------------------------------
+        # Model
         clf = SVR(kernel='precomputed')
 
-    # --------------------------------------------------------------------------
-    # Model selection
-    # Search space
+        # --------------------------------------------------------------------------
+        # Model selection
+        # Search space
         param_grid = {'C': [2 ** -6, 2 ** -5, 2 ** -4, 2 ** -3, 2 ** -2, 2 ** -1, 2 ** 0, 2 ** 1]}
 
-    # Gridsearch
+        # Gridsearch
         internal_cv = KFold(n_splits=3)
         grid_cv = GridSearchCV(estimator=clf,
                                param_grid=param_grid,
@@ -94,8 +79,7 @@ for i_site in np.unique(sites):
                                scoring='neg_mean_absolute_error',
                                verbose=0)
 
-    # --------------------------------------------------------------------------
-    #     grid_result = grid_cv.fit(x_train[sites_train==i_site, :][:, sites_train==i_site], y_train[sites_train==i_site])
+        # --------------------------------------------------------------------------
         grid_result = grid_cv.fit(x_train, y_train)
 
         # --------------------------------------------------------------------------
@@ -103,37 +87,21 @@ for i_site in np.unique(sites):
 
         # --------------------------------------------------------------------------
         y_test_predicted = best_regressor.predict(x_test)
-        # y_test_predicted = best_regressor.predict(x_test[sites_test==i_site, :][:, sites_train==i_site])
-
 
         mae_test = mean_absolute_error(y_test, y_test_predicted)
-        # print('MAE: %.3f ' % mae_test)
 
         mae_cv[i_fold, :] = mae_test
 
-    # print('CV results')
     print('MAE: Mean(SD) = %.3f(%.3f)' % (mae_cv.mean(), mae_cv.std()))
 
-    # for row, value in zip(test_idx, y_test_predicted):
-    #     predictions_df.iloc[row, predictions_df.columns.get_loc('predictions')] = value
 
-A = pd.read_csv(PROJECT_ROOT / 'output' / 'experiments' / 'SPM_wm+gm_SVM' / 'cv'/ 'predictions_cv.csv')
+no_site_df = pd.read_csv(PROJECT_ROOT / 'output' / 'experiments' / 'SPM_wm+gm_SVM' / 'cv'/ 'predictions_cv.csv')
+w_site_df = pd.read_csv(PROJECT_ROOT / 'output' / 'experiments' / 'SPM_wm+gm_w_site_SVM' / 'cv'/ 'predictions_cv.csv')
+
 for s in range(17):
-    print(s)
-    # print(np.sum(demographic_df['site'] == s))
-    # B = predictions_df.loc[demographic_df['site'] == s]
-    C = A.loc[demographic_df['site'] == s]
+    C = no_site_df.loc[demographic_df['site'] == s]
+    no_site = np.mean(np.abs(C['age'] - C['predictions']))
+    D = w_site_df.loc[demographic_df['site'] == s]
+    w_site = np.mean(np.abs(D['age'] - D['predictions']))
+    print('{:} {:}: {:5.3f} {:5.3f}'.format(s,len(C), no_site, w_site))
 
-    # print(np.mean(np.abs(B['age'] - B['predictions'])))
-    print(np.mean(np.abs(C['age'] - C['predictions'])))
-
-
-A = pd.read_csv(PROJECT_ROOT / 'output' / 'experiments' / 'SPM_wm+gm_w_site_SVM' / 'cv'/ 'predictions_cv.csv')
-for s in range(17):
-    print(s)
-    # print(np.sum(demographic_df['site'] == s))
-    # B = predictions_df.loc[demographic_df['site'] == s]
-    C = A.loc[demographic_df['site'] == s]
-
-    # print(np.mean(np.abs(B['age'] - B['predictions'])))
-    print(np.mean(np.abs(C['age'] - C['predictions'])))
