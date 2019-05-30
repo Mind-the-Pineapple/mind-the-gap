@@ -63,7 +63,7 @@ for subj_index, subj_data in submission_df.iterrows():
 
     media = np.sum(np.array(subj_pred_list)) / np.sum(np.array(subj_models_weight_list))
     print('')
-    print('final prediction = {:}/{:} = {:} ~ {:}'.format(np.sum(np.array(subj_pred_list)),
+    print('final prediction = {:7.3f}/{:7.3f} = {:6.3f} ~ {:}'.format(np.sum(np.array(subj_pred_list)),
                                                  np.sum(np.array(subj_models_weight_list)),
                                                  media,
                                                  int(round(media))))
