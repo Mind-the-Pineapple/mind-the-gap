@@ -40,7 +40,7 @@ for subj_index, subj_data in submission_df.iterrows():
     subj_models_weight_list = []
 
     for df_index, prediction_df in enumerate(test_predictions_list):
-        subject_prediction = prediction_df.loc[prediction_df['subject_ID'] == subj_data['subject_ID']]
+        subject_prediction = prediction_df.loc[prediction_df[prediction_df.columns[0]] == subj_data['subject_ID']]
         if len(subject_prediction)==1:
             model_mae = mae_df.loc[mae_df[mae_df.columns[0]]==models_name_list[df_index]]['MAE'].values
             if model_mae < 7.0:
@@ -53,5 +53,6 @@ for subj_index, subj_data in submission_df.iterrows():
 
     submission_df['age'].iloc[subj_index] = media
 
-submission_df = submission_df.drop(['gender', 'site'], axis=1)
-submission_df.to_csv(PROJECT_ROOT / 'output' / 'previsoes_ganhadoras.csv', index=False)
+# submission_df = submission_df.drop(['gender', 'site'], axis=1)
+submission_df = submission_df.drop(['gender'], axis=1)
+submission_df.to_csv(PROJECT_ROOT / 'output' / 'quase_la.csv', index=False)
