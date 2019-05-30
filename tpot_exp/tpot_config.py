@@ -17,7 +17,7 @@ tpot_config_gpr = {
     'sklearn.gaussian_process.GaussianProcessRegressor': {
         'kernel': kernels,
         'random_state': [42],
-        'alpha': np.arange(1e-2, 10, 10)
+        'alpha': [1e-03, 1.5e-03, 1e-2, 1.5e-2, 1e-01, 1.5e-1, 1e0]
     },
     'skrvm.RVR': {
            'kernel': kernels,
@@ -76,12 +76,6 @@ tpot_config_gpr = {
            'min_samples_split': range(2, 21),
            'random_state': [42],
            'min_samples_leaf': range(1, 21)
-    },
-        'xgboost.XGBRegressor': {
-           'max_depth': range(1, 11),
-           'learning_rate': [1e-3, 1e-2, 1e-1, 0.5, 1.],
-           'subsample': np.arange(0.05, 1.01, 0.05),
-           'min_child_weight': range(1, 21),
     },
 ###############################################################################
 ## Preprocessors
