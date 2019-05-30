@@ -25,7 +25,6 @@ submission_df['age'] = np.nan
 
 mae_df = pd.read_csv(PROJECT_ROOT / 'data' / 'all_mae.csv')
 
-
 test_predictions_list = []
 models_name_list = []
 
@@ -34,25 +33,48 @@ for prediction_file in testing_dir.glob('*.csv'):
     models_name_list.append(prediction_file.stem)
 
 for subj_index, subj_data in submission_df.iterrows():
-    print(subj_data['subject_ID'])
+    print('-'*130)
+    print(subj_data['subject_ID'].upper().center(130))
+    print('')
 
     subj_pred_list = []
     subj_models_weight_list = []
 
     for df_index, prediction_df in enumerate(test_predictions_list):
         subject_prediction = prediction_df.loc[prediction_df[prediction_df.columns[0]] == subj_data['subject_ID']]
-        if len(subject_prediction)==1:
-            model_mae = mae_df.loc[mae_df[mae_df.columns[0]]==models_name_list[df_index]]['MAE'].values
-            if model_mae < 7.0:
-                model_weight_final = (7.0 - model_mae) ** 2
-                subj_pred_list.append(subject_prediction[subject_prediction.columns[1]].values * model_weight_final)
+        if len(subject_prediction) == 1:
+            model_weight = -1
+            predicted_value = -1
 
-                subj_models_weight_list.append(model_weight_final)
+            selected_model = models_name_list[df_index]
+            model_mae = mae_df.loc[mae_df[mae_df.columns[0]] == selected_model]['MAE'].values[0]
+
+            if model_mae < 7.0:
+                model_weight = (7.0 - model_mae) ** 2
+                predicted_value = subject_prediction[subject_prediction.columns[1]].values[0]
+                subj_pred_list.append(predicted_value * model_weight)
+
+                subj_models_weight_list.append(model_weight)
+
+            print('Model: {:30s}\tMAE: {: >7.4f}\tModel weight: {: >7.4f}\tPredicted value: {: >7.4f}'
+                  .format(selected_model, model_mae, model_weight, predicted_value))
+
+    print('')
+    print('weighted predictions')
+    print(subj_pred_list)
+    print('weights')
+    print(subj_models_weight_list)
 
     media = np.sum(np.array(subj_pred_list)) / np.sum(np.array(subj_models_weight_list))
+    print('')
+    print('final prediction = {:}/{:} = {:} ~ {:}'.format(np.sum(np.array(subj_pred_list)),
+                                                 np.sum(np.array(subj_models_weight_list)),
+                                                 media,
+                                                 int(round(media))))
 
-    submission_df['age'].iloc[subj_index] = media
+    submission_df['age'].iloc[subj_index] = int(round(media))
+    # submission_df['age'].iloc[subj_index] = media
 
 # submission_df = submission_df.drop(['gender', 'site'], axis=1)
 submission_df = submission_df.drop(['gender'], axis=1)
-submission_df.to_csv(PROJECT_ROOT / 'output' / 'quase_la.csv', index=False)
+submission_df.to_csv(PROJECT_ROOT / 'output' / 'quase_la_arredondado.csv', index=False)
