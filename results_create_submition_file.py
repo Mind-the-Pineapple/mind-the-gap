@@ -56,14 +56,10 @@ for subj_index, subj_data in submission_df.iterrows():
 
                 subj_models_weight_list.append(model_weight)
 
-            print('Model: {:30s}\tMAE: {: >7.4f}\tModel weight: {: >7.4f}\tPredicted value: {: >7.4f}'
-                  .format(selected_model, model_mae, model_weight, predicted_value))
+            print('Model: {:30s}\tMAE: {: >6.3f}\tModel weight: {: >6.3f}\tPredicted value: {: >6.3f}\tWeighted pred: {: >6.3f}'
+                  .format(selected_model, model_mae, model_weight, predicted_value, predicted_value * model_weight))
 
     print('')
-    print('weighted predictions')
-    print(subj_pred_list)
-    print('weights')
-    print(subj_models_weight_list)
 
     media = np.sum(np.array(subj_pred_list)) / np.sum(np.array(subj_models_weight_list))
     print('')
