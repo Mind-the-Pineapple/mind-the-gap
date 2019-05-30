@@ -18,9 +18,18 @@ sns.set(style="whitegrid")
 
 def plot_age_distribution(df, save_path):
     plt.figure()
-    min_age = df['age'].min()
-    max_age = df['age'].max()
-    plt.hist(df['age'], bins=int(max_age-min_age), range=(min_age, max_age))
+    if isinstance(df, pd.DataFrame):
+        min_age = df['age'].min()
+        max_age = df['age'].max()
+        data = df['age']
+    else:
+        min_age = np.min(df)
+        max_age = np.max(df)
+        data = df
+    n, _, _ = plt.hist(data, bins=int(max_age-min_age), range=(min_age, max_age))
+    bin_max = np.max(n)
+    plt.xlim(min_age, max_age)
+    plt.yticks(np.arange(10, bin_max, 10))
     plt.xlabel('Age')
     plt.ylabel('# of Subjects')
     plt.savefig(save_path)
@@ -65,6 +74,111 @@ def read_freesurfer_example(data_dir, demographic_path):
 
     return x, demographic_df
 
+def read_freesurfer_sites_validation(data_dir, demographic_path, columns_name,
+                                     site_of_interest):
+    """
+    Read volumetric data and demographic data.
+    Note: demographic file is included here to make sure that the
+    x data and the demographic data follows the same subject order.
+    Note: using the data below the validation dataset is saved as .txt
+
+    Args:
+        data_dir: String with path to directory with csv files.
+        columns_name: List of columns name
+
+    Returns:
+        x: Numpy array with neuroimaging data.
+    """
+
+    freesurfer_dir = Path(data_dir)
+
+    aseg_df = pd.read_csv(freesurfer_dir / 'aseg_vol.txt',  index_col='Measure:volume', sep='\t')
+    lh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'lh_aparc_vol.txt', index_col='lh.aparc.volume', sep='\t')
+    rh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'rh_aparc_vol.txt', index_col='rh.aparc.volume', sep='\t')
+    lh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'lh_aparc_thick.txt', index_col='lh.aparc.thickness', sep='\t')
+    rh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'rh_aparc_thick.txt', index_col='rh.aparc.thickness', sep='\t')
+    lh_aparc_area_df = pd.read_csv(freesurfer_dir / 'lh_aparc_area.txt', index_col='lh.aparc.area', sep='\t')
+    rh_aparc_area_df = pd.read_csv(freesurfer_dir / 'rh_aparc_area.txt', index_col='rh.aparc.area', sep='\t')
+    lh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'lh_aparc_curv.txt', index_col='lh.aparc.meancurv', sep='\t')
+    rh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'rh_aparc_curv.txt', index_col='rh.aparc.meancurv', sep='\t')
+
+    merged = pd.merge(aseg_df, lh_aparc_vol_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_vol_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_thick_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_thick_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_area_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_area_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_curv_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_curv_df, left_index=True, right_index=True)
+
+    merged.index = merged.index.str.replace('_raw/', '')
+
+    demographic_df = pd.read_csv(demographic_path, index_col='subject_ID')
+    x_df = pd.DataFrame(merged[columns_name])
+    # Select subjects by their recording sites.  If -1 is passed. Select all
+    if site_of_interest >=0:
+        demographic_df = demographic_df[demographic_df['site']==site_of_interest]
+        x_df = x_df.loc[demographic_df.index]
+    return x_df, demographic_df
+
+
+
+def read_freesurfer_sites(data_dir, demographic_path, columns_name,
+                          site_of_interest):
+    """
+    Read volumetric data and demographic data. Note: demographic file is included here to make sure that the
+    x data and the demographic data follows the same subject order.
+
+    Args:
+        data_dir: String with path to directory with csv files.
+        demographic_path: String with path to demographic data.
+        columns_name: List of columns name
+        site_of_interest: Site from which to take the data
+
+    Returns:
+        x: Numpy array with neuroimaging data.
+        demographic_df: Pandas DataFrame with all demographic data.
+    """
+    freesurfer_dir = Path(data_dir)
+
+    aseg_df = pd.read_csv(freesurfer_dir / 'aseg_vol.csv', index_col='Measure:volume')
+    lh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'lh_aparc_vol.csv', index_col='lh.aparc.volume')
+    rh_aparc_vol_df = pd.read_csv(freesurfer_dir / 'rh_aparc_vol.csv', index_col='rh.aparc.volume')
+    lh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'lh_aparc_thick.csv', index_col='lh.aparc.thickness')
+    rh_aparc_thick_df = pd.read_csv(freesurfer_dir / 'rh_aparc_thick.csv', index_col='rh.aparc.thickness')
+    lh_aparc_area_df = pd.read_csv(freesurfer_dir / 'lh_aparc_area.csv', index_col='lh.aparc.area')
+    rh_aparc_area_df = pd.read_csv(freesurfer_dir / 'rh_aparc_area.csv', index_col='rh.aparc.area')
+    lh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'lh_aparc_curv.csv', index_col='lh.aparc.meancurv')
+    rh_aparc_curv_df = pd.read_csv(freesurfer_dir / 'rh_aparc_curv.csv', index_col='rh.aparc.meancurv')
+
+    merged = pd.merge(aseg_df, lh_aparc_vol_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_vol_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_thick_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_thick_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_area_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_area_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, lh_aparc_curv_df, left_index=True, right_index=True)
+    merged = pd.merge(merged, rh_aparc_curv_df, left_index=True, right_index=True)
+
+    merged.index = merged.index.str.replace('_raw/', '')
+
+    demographic_df = pd.read_csv(demographic_path, index_col='subject_ID')
+    merged_df = demographic_df.merge(merged, left_index=True, right_index=True, how='right')
+
+    # tiv = merged_df['EstimatedTotalIntraCranialVol']
+    demographic_df = pd.DataFrame(merged_df[demographic_df.columns])
+
+    # rename index back to subjec_ID
+    x_df = pd.DataFrame(merged_df[columns_name])
+    # x = x_df.values.astype('float32') / tiv.values[:,np.newaxis]
+    # Select subjects by their recording sites.  If -1 is passed. Select all
+    if site_of_interest >=0:
+        demographic_df = demographic_df[demographic_df['site']==site_of_interest]
+        x_df = x_df.loc[demographic_df.index]
+    # Note: return dataframe so that the indexes for the traning and test
+    # dataset can be recovered
+    return x_df, demographic_df
+
 def read_freesurfer(data_dir, demographic_path, columns_name):
     """
     Read volumetric data and demographic data. Note: demographic file is included here to make sure that the
@@ -101,12 +215,10 @@ def read_freesurfer(data_dir, demographic_path, columns_name):
     merged = pd.merge(merged, rh_aparc_curv_df, left_index=True, right_index=True)
 
     merged.index = merged.index.str.replace('_raw/', '')
-
     demographic_df = pd.read_csv(demographic_path, index_col='subject_ID')
     merged_df = demographic_df.merge(merged, left_index=True, right_index=True, how='right')
-
+    merged_df.index.names = ['subject_ID']
     # tiv = merged_df['EstimatedTotalIntraCranialVol']
-
     demographic_df = pd.DataFrame(merged_df[demographic_df.columns])
     x_df = pd.DataFrame(merged_df[columns_name])
     # x = x_df.values.astype('float32') / tiv.values[:,np.newaxis]
