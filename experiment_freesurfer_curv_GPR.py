@@ -2,7 +2,7 @@
 Experiment using Linear GPR on freesurfer volume data.
 
 Results:
-MAE: Mean(SD) = 7.170(0.163)
+MAE: Mean(SD) = 7.200(0.159)
 """
 from pathlib import Path
 
@@ -30,7 +30,7 @@ np.random.seed(random_seed)
 output_dir = PROJECT_ROOT / 'output' / 'experiments'
 output_dir.mkdir(exist_ok=True)
 
-experiment_name = 'freesurfer_vol_gpr'  # Change here*
+experiment_name = 'freesurfer_curv_gpr'  # Change here*
 experiment_dir = output_dir / experiment_name
 experiment_dir.mkdir(exist_ok=True)
 
@@ -80,8 +80,8 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
     # --------------------------------------------------------------------------
     # Model selection
     # Search space
-    param_grid = [{'kernel': [RBF()], 'alpha':np.arange(1e-2, 100, 10)},
-                  {'kernel': [DotProduct()], 'alpha':np.arange(1e-2, 100, 10)}
+    param_grid = [{'kernel': [RBF(), DotProduct()],
+                   'alpha': [1e0, 1e-1, 1.5e-1, 1e-2, 1.5e-2]},
                  ]
 
     # Gridsearch
@@ -91,7 +91,7 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
                            cv=internal_cv,
                            scoring='neg_mean_absolute_error',
                            verbose=1,
-                           n_jobs=1)
+                           n_jobs=4)
 
     # --------------------------------------------------------------------------
     print('Perform Grid Search')
@@ -107,8 +107,6 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
         predictions_df.iloc[row, predictions_df.columns.get_loc('predictions')] = value
 
     # --------------------------------------------------------------------------
-    # import pdb
-    # pdb.set_trace()
     mae_test = mean_absolute_error(y_test, y_test_predicted)
     print('MAE: %.3f ' % mae_test)
 
@@ -122,29 +120,32 @@ print('MAE: Mean(SD) = %.3f(%.3f)' % (mae_cv.mean(), mae_cv.std()))
 mae_cv_df = pd.DataFrame(columns=['MAE'], data=mae_cv)
 mae_cv_df.to_csv(cv_dir / 'mae_cv.csv', index=False)
 
-predictions_df.to_csv(cv_dir / 'predictions_cv_GPR.csv', index=False)
+predictions_df.to_csv(cv_dir / 'predictions_cv_GPR.csv', index=True)
 
 # --------------------------------------------------------------------------
 # --------------------------------------------------------------------------
 # Training on whole data
 scaler = RobustScaler()
 
-x_norm = scaler.fit_transform(x)
+scaler_fit = scaler.fit(x)
+x_norm = scaler_fit.transform(x)
 
 clf_final = GaussianProcessRegressor()
 
-param_grid_final = [{'kernel': [RBF()]},
-                    {'kernel': [DotProduct()], 'alpha':[1e-2, 1]}
+param_grid_final = [{'kernel': [RBF(), DotProduct()],
+                     'alpha': [1e0, 1e-1, 1.5e-1, 1e-2, 1.5e-2]},
              ]
+
 
 internal_cv = KFold(n_splits=5)
 grid_cv_final = GridSearchCV(estimator=clf_final,
                              param_grid=param_grid_final,
                              cv=internal_cv,
                              scoring='neg_mean_absolute_error',
-                             verbose=1)
+                             verbose=4)
 
 grid_result = grid_cv_final.fit(x_norm, y)
 best_regressor_final = grid_cv_final.best_estimator_
 
+joblib.dump(scaler_fit, experiment_dir / 'scaler.joblib')
 joblib.dump(best_regressor_final, experiment_dir / 'model.joblib')

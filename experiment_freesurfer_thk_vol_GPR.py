@@ -2,7 +2,7 @@
 Experiment using Linear GPR on freesurfer volume data.
 
 Results:
-MAE: Mean(SD) =
+MAE: Mean(SD) = 6.385(0.160)
 """
 from pathlib import Path
 
@@ -30,7 +30,7 @@ np.random.seed(random_seed)
 output_dir = PROJECT_ROOT / 'output' / 'experiments'
 output_dir.mkdir(exist_ok=True)
 
-experiment_name = 'freesurfer_vol_gpr'  # Change here*
+experiment_name = 'freesurfer_thk_vol_gpr'  # Change here*
 experiment_dir = output_dir / experiment_name
 experiment_dir.mkdir(exist_ok=True)
 
@@ -80,8 +80,8 @@ for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
     # --------------------------------------------------------------------------
     # Model selection
     # Search space
-    param_grid = [{'kernel': [RBF()], 'alpha':np.arange(1e-2, 100, 10)},
-                  {'kernel': [DotProduct()], 'alpha':np.arange(1e-2, 100, 10)}
+    param_grid = [{'kernel': [RBF(), DotProduct()],
+                   'alpha': [1e0, 1e-1, 1.5e-1, 1e-2, 1.5e-2]},
                  ]
 
     # Gridsearch
@@ -129,12 +129,13 @@ predictions_df.to_csv(cv_dir / 'predictions_cv_GPR.csv', index=False)
 # Training on whole data
 scaler = RobustScaler()
 
-x_norm = scaler.fit_transform(x)
+scaler_fit = scaler.fit(x)
+x_norm = scaler_fit.transform(x)
 
 clf_final = GaussianProcessRegressor()
 
-param_grid_final = [{'kernel': [RBF()]},
-                    {'kernel': [DotProduct()], 'alpha':[1e-2, 1]}
+param_grid_final = [{'kernel': [RBF(), DotProduct()],
+                     'alpha': [1e0, 1e-1, 1.5e-1, 1e-2, 1.5e-2]},
              ]
 
 internal_cv = KFold(n_splits=5)
@@ -142,9 +143,11 @@ grid_cv_final = GridSearchCV(estimator=clf_final,
                              param_grid=param_grid_final,
                              cv=internal_cv,
                              scoring='neg_mean_absolute_error',
-                             verbose=1)
+                             verbose=1,
+                             n_jobs=1)
 
 grid_result = grid_cv_final.fit(x_norm, y)
 best_regressor_final = grid_cv_final.best_estimator_
 
+joblib.dump(scaler_fit, experiment_dir / 'scaler.joblib')
 joblib.dump(best_regressor_final, experiment_dir / 'model.joblib')
