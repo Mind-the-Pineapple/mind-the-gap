@@ -23,10 +23,15 @@ testing_dir = PROJECT_ROOT / 'output' / 'testing'
 submission_df = pd.read_csv(PROJECT_ROOT / 'data' / 'PAC2019_BrainAge_Test_Upload.csv')
 submission_df['age'] = np.nan
 
+# mae_df = pd.read_csv(PROJECT_ROOT / 'data' / 'mae.csv')
+
+
 test_predictions_list = []
+models_name_list = []
 
 for prediction_file in testing_dir.glob('*.csv'):
     test_predictions_list.append(pd.read_csv(prediction_file))
+    models_name_list.append(prediction_file.stem)
 
 
 
@@ -37,7 +42,7 @@ for index, row in submission_df.iterrows():
     subj_pred_list = []
     subj_models_weight_list = []
 
-    for prediction_df in test_predictions_list:
+    for dataframes_index, prediction_df in enumerate(test_predictions_list):
         print('')
         subject_prediction = prediction_df.loc[prediction_df['subject_ID'] == row['subject_ID']]
         if len(subject_prediction)==1:
