@@ -23,7 +23,7 @@ testing_dir = PROJECT_ROOT / 'output' / 'testing'
 submission_df = pd.read_csv(PROJECT_ROOT / 'data' / 'PAC2019_BrainAge_Test_Upload.csv')
 submission_df['age'] = np.nan
 
-# mae_df = pd.read_csv(PROJECT_ROOT / 'data' / 'mae.csv')
+mae_df = pd.read_csv(PROJECT_ROOT / 'data' / 'all_mae.csv')
 
 
 test_predictions_list = []
@@ -33,26 +33,25 @@ for prediction_file in testing_dir.glob('*.csv'):
     test_predictions_list.append(pd.read_csv(prediction_file))
     models_name_list.append(prediction_file.stem)
 
-
-
-for index, row in submission_df.iterrows():
-
-    print(row['subject_ID'])
+for subj_index, subj_data in submission_df.iterrows():
+    print(subj_data['subject_ID'])
 
     subj_pred_list = []
     subj_models_weight_list = []
 
-    for dataframes_index, prediction_df in enumerate(test_predictions_list):
-        print('')
-        subject_prediction = prediction_df.loc[prediction_df['subject_ID'] == row['subject_ID']]
+    for df_index, prediction_df in enumerate(test_predictions_list):
+        subject_prediction = prediction_df.loc[prediction_df['subject_ID'] == subj_data['subject_ID']]
         if len(subject_prediction)==1:
-            # TODO: Ponderar subject_prediction[subject_prediction.columns[1]]
-            subj_pred_list.append(subject_prediction[subject_prediction.columns[1]])
+            model_mae = mae_df.loc[mae_df[mae_df.columns[0]]==models_name_list[df_index]]['MAE'].values
+            if model_mae < 7.0:
+                model_weight_final = (7.0 - model_mae) ** 2
+                subj_pred_list.append(subject_prediction[subject_prediction.columns[1]].values * model_weight_final)
 
-            # subj_models_weight_list.append('PESO')
+                subj_models_weight_list.append(model_weight_final)
 
     media = np.sum(np.array(subj_pred_list)) / np.sum(np.array(subj_models_weight_list))
 
-    submission_df['age'].iloc[index] = media
+    submission_df['age'].iloc[subj_index] = media
 
-submission_df.to_csv(PROJECT_ROOT / 'output' / 'previsoes_ganhadoras.csv')
+submission_df = submission_df.drop(['gender', 'site'], axis=1)
+submission_df.to_csv(PROJECT_ROOT / 'output' / 'previsoes_ganhadoras.csv', index=False)
