@@ -54,7 +54,10 @@ for subj_index, subj_data in submission_df.iterrows():
             selected_model = models_name_list[df_index]
             model_mae = mae_df.loc[mae_df[mae_df.columns[0]] == selected_model]['MAE'].values[0]
 
-            if model_mae < 7.0:
+            if (subj_data['site'] == 14)&(selected_model=='freesurfer_thk_vol_curv_GPR'):
+                pass
+
+            elif model_mae < 7.0:
                 model_weight = (7.0 - model_mae) ** 2
                 predicted_value = subject_prediction[subject_prediction.columns[1]].values[0]
                 clipped_predicted_value = np.clip(predicted_value,
