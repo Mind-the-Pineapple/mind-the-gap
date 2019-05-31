@@ -97,3 +97,18 @@ GM+WM (metric MAE and 3 KFOLD CV for 1_per_site )
 | 14 | make_pipeline(StackingEstimator(estimator=ExtraTreesRegressor(bootstrap=False, max_features=0.55, min_samples_leaf=8, min_samples_split=19, n_estimators=100, random_state=42)),StackingEstimator(estimator=DecisionTreeRegressor(max_depth=1, min_samples_leaf=3, min_samples_split=5,random_state=42)),StackingEstimator(estimator=LinearRegression()),StackingEstimator(estimator=DecisionTreeRegressor(max_depth=1, min_samples_leaf=6, min_samples_split=10, random_state=42)),Ridge(alpha=10.0, random_state=42))| 10.849 | 15 | 42 |
 | 15 | make_pipeline(Nystroem(gamma=0.6000000000000001, kernel="sigmoid", n_components=2, random_state=42), LinearRegression()) | 1.861 | 5 | 14 |
 | 16 | make_pipeline(StackingEstimator(estimator=RandomForestRegressor(bootstrap=True, max_features=0.3, min_samples_leaf=18, min_samples_split=11, n_estimators=100, random_state=42)),StackingEstimator(estimator=ElasticNetCV(l1_ratio=0.9, random_state=42, tol=0.001)),DecisionTreeRegressor(max_depth=8, min_samples_leaf=6, min_samples_split=11, random_state=42)) | 2.22 | 7 | 21 |
+
+## TPOT (All sites)
+
+**Model:**  make_pipeline(make_union(StackingEstimator (estimator=LinearRegression()),
+ FunctionTransformer(copy)),
+ RandomForestRegressor(bootstrap=False,
+                                      max_features=0.45,
+                                      min_samples_leaf=15,
+                                      min_samples_split=19,
+                                      n_estimators=100,
+                                      random_state=42))
+
+**MAE:** 5.195(0.113)
+
+**script:** experiment_tpot_all_site.py  
