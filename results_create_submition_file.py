@@ -33,12 +33,13 @@ for prediction_file in testing_dir.glob('*.csv'):
     models_name_list.append(prediction_file.stem)
 
 for subj_index, subj_data in submission_df.iterrows():
-    print('-'*130)
+    print('-' * 130)
     print(subj_data['subject_ID'].upper().center(130))
     print('')
 
-    subj_pred_list = []
+    subj_weighted_pred_list = []
     subj_models_weight_list = []
+    subj_pred_list = []
 
     for df_index, prediction_df in enumerate(test_predictions_list):
         subject_prediction = prediction_df.loc[prediction_df[prediction_df.columns[0]] == subj_data['subject_ID']]
@@ -52,25 +53,31 @@ for subj_index, subj_data in submission_df.iterrows():
             if model_mae < 7.0:
                 model_weight = (7.0 - model_mae) ** 2
                 predicted_value = subject_prediction[subject_prediction.columns[1]].values[0]
-                subj_pred_list.append(predicted_value * model_weight)
+                subj_weighted_pred_list.append(predicted_value * model_weight)
 
                 subj_models_weight_list.append(model_weight)
+                subj_pred_list.append(predicted_value)
 
-            print('Model: {:30s}\tMAE: {: >6.3f}\tModel weight: {: >6.3f}\tPredicted value: {: >6.3f}\tWeighted pred: {: >6.3f}'
-                  .format(selected_model, model_mae, model_weight, predicted_value, predicted_value * model_weight))
+            print(
+                'Model: {:30s}\tMAE: {: >6.3f}\tModel weight: {: >6.3f}\tPredicted value: {: >6.3f}\tWeighted pred: {: >6.3f}'
+                .format(selected_model, model_mae, model_weight, predicted_value, predicted_value * model_weight))
 
     print('')
 
-    media = np.sum(np.array(subj_pred_list)) / np.sum(np.array(subj_models_weight_list))
+    media = np.sum(np.array(subj_weighted_pred_list)) / np.sum(np.array(subj_models_weight_list))
+    uncertainty = np.std(np.array(subj_pred_list))
     print('')
-    print('final prediction = {:7.3f}/{:7.3f} = {:6.3f} ~ {:}'.format(np.sum(np.array(subj_pred_list)),
-                                                 np.sum(np.array(subj_models_weight_list)),
-                                                 media,
-                                                 int(round(media))))
+    print('final prediction = {:7.3f}/{:7.3f} = {:6.3f} ~ {:} (Uncertainty: {:4.2f})'
+        .format(
+        np.sum(np.array(subj_weighted_pred_list)),
+        np.sum(np.array(subj_models_weight_list)),
+        media,
+        int(round(media)),
+        uncertainty))
 
     submission_df['age'].iloc[subj_index] = int(round(media))
     # submission_df['age'].iloc[subj_index] = media
 
 # submission_df = submission_df.drop(['gender', 'site'], axis=1)
 submission_df = submission_df.drop(['gender'], axis=1)
-submission_df.to_csv(PROJECT_ROOT / 'output' / 'quase_la_arredondado.csv', index=False)
+submission_df.to_csv(PROJECT_ROOT / 'output' / 'quase_la_arredondado_versao_com_tpots.csv', index=False)
