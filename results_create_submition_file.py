@@ -22,6 +22,8 @@ testing_dir = PROJECT_ROOT / 'output' / 'testing'
 
 submission_df = pd.read_csv(PROJECT_ROOT / 'data' / 'PAC2019_BrainAge_Test_Upload.csv')
 submission_df['age'] = np.nan
+submission_df['uncertainty'] = np.nan
+
 
 mae_df = pd.read_csv(PROJECT_ROOT / 'data' / 'all_mae.csv')
 
@@ -76,6 +78,8 @@ for subj_index, subj_data in submission_df.iterrows():
         uncertainty))
 
     submission_df['age'].iloc[subj_index] = int(round(media))
+    submission_df['uncertainty'].iloc[subj_index] = uncertainty
+
     # submission_df['age'].iloc[subj_index] = media
 
 # submission_df = submission_df.drop(['gender', 'site'], axis=1)
