@@ -24,6 +24,7 @@ submission_df = pd.read_csv(PROJECT_ROOT / 'data' / 'PAC2019_BrainAge_Test_Uploa
 submission_df['age'] = np.nan
 submission_df['uncertainty'] = np.nan
 
+age_range_df = pd.read_csv(PROJECT_ROOT / 'data' / 'train_age_range.csv', index_col='site')
 
 mae_df = pd.read_csv(PROJECT_ROOT / 'data' / 'all_mae.csv')
 
@@ -35,8 +36,8 @@ for prediction_file in testing_dir.glob('*.csv'):
     models_name_list.append(prediction_file.stem)
 
 for subj_index, subj_data in submission_df.iterrows():
-    print('-' * 130)
-    print(subj_data['subject_ID'].upper().center(130))
+    print('-' * 150)
+    print(subj_data['subject_ID'].upper().center(150))
     print('')
 
     subj_weighted_pred_list = []
@@ -47,7 +48,8 @@ for subj_index, subj_data in submission_df.iterrows():
         subject_prediction = prediction_df.loc[prediction_df[prediction_df.columns[0]] == subj_data['subject_ID']]
         if len(subject_prediction) == 1:
             model_weight = -1
-            predicted_value = -1
+            predicted_value = 0
+            clipped_predicted_value = 0
 
             selected_model = models_name_list[df_index]
             model_mae = mae_df.loc[mae_df[mae_df.columns[0]] == selected_model]['MAE'].values[0]
@@ -55,33 +57,44 @@ for subj_index, subj_data in submission_df.iterrows():
             if model_mae < 7.0:
                 model_weight = (7.0 - model_mae) ** 2
                 predicted_value = subject_prediction[subject_prediction.columns[1]].values[0]
-                subj_weighted_pred_list.append(predicted_value * model_weight)
+                clipped_predicted_value = np.clip(predicted_value,
+                                                  age_range_df.iloc[subj_data['site']]['min'],
+                                                  age_range_df.iloc[subj_data['site']]['max'])
+                subj_weighted_pred_list.append(clipped_predicted_value * model_weight)
 
                 subj_models_weight_list.append(model_weight)
                 subj_pred_list.append(predicted_value)
 
             print(
-                'Model: {:30s}\tMAE: {: >6.3f}\tModel weight: {: >6.3f}\tPredicted value: {: >6.3f}\tWeighted pred: {: >6.3f}'
-                .format(selected_model, model_mae, model_weight, predicted_value, predicted_value * model_weight))
+                'Model: {:30s} \t MAE: {: >6.3f} \t Model weight: {: >6.3f} \t Pred value: {: >6.3f} \t Clipped pred: {: >6.3f} \t Weighted clip pred: {: >6.3f}'
+                    .format(selected_model,
+                            model_mae,
+                            model_weight,
+                            predicted_value,
+                            clipped_predicted_value,
+                            clipped_predicted_value * model_weight))
 
     print('')
 
     media = np.sum(np.array(subj_weighted_pred_list)) / np.sum(np.array(subj_models_weight_list))
+    clipped_media = np.clip(media, age_range_df.iloc[subj_data['site']]['min'],
+                            age_range_df.iloc[subj_data['site']]['max'])
     uncertainty = np.std(np.array(subj_pred_list))
     print('')
-    print('final prediction = {:7.3f}/{:7.3f} = {:6.3f} ~ {:} (Uncertainty: {:4.2f})'
+    print('final prediction = {:7.3f}/{:7.3f} = {:6.3f} ~ {:6.3f} ~ {:} (Uncertainty: {:4.2f})'
         .format(
         np.sum(np.array(subj_weighted_pred_list)),
         np.sum(np.array(subj_models_weight_list)),
         media,
-        int(round(media)),
+        clipped_media,
+        int(round(clipped_media)),
         uncertainty))
 
-    submission_df['age'].iloc[subj_index] = int(round(media))
+    submission_df['age'].iloc[subj_index] = int(round(clipped_media))
     submission_df['uncertainty'].iloc[subj_index] = uncertainty
 
     # submission_df['age'].iloc[subj_index] = media
 
 # submission_df = submission_df.drop(['gender', 'site'], axis=1)
-submission_df = submission_df.drop(['gender'], axis=1)
+# submission_df = submission_df.drop(['gender'], axis=1)
 submission_df.to_csv(PROJECT_ROOT / 'output' / 'quase_la_arredondado_versao_com_tpots.csv', index=False)
