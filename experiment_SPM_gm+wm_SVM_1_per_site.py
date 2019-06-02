@@ -26,6 +26,10 @@ np.random.seed(random_seed)
 # --------------------------------------------------------------------------
 output_dir = PROJECT_ROOT / 'output' / 'experiments'
 
+experiment_name = 'SPM_wm+gm_SVM_1_per_site'  # Change here*
+experiment_dir = output_dir / experiment_name
+experiment_dir.mkdir(exist_ok=True)
+
 # --------------------------------------------------------------------------
 # Input data directory (plz, feel free to use NAN shared folder)
 gram_matrix_path = PROJECT_ROOT / 'data' / 'gram' / 'wm+gm.csv'
@@ -54,6 +58,12 @@ mae_cv = np.zeros((n_folds, 1))
 for i_site in np.unique(sites):
     x_red = x[sites==i_site, :][:,sites==i_site]
     y_red = y[sites==i_site]
+
+    predictions_df = pd.DataFrame(demographic_df[['subject_ID', 'age']])
+    predictions_df = predictions_df.loc[demographic_df['site'] == i_site]
+    predictions_df = predictions_df.reset_index()
+    predictions_df['predictions'] = np.nan
+
     print(i_site)
     mae_cv = np.zeros((n_folds, 1))
 
@@ -88,9 +98,14 @@ for i_site in np.unique(sites):
         # --------------------------------------------------------------------------
         y_test_predicted = best_regressor.predict(x_test)
 
+        for row, value in zip(test_idx, y_test_predicted):
+            predictions_df.iloc[row, predictions_df.columns.get_loc('predictions')] = value
+
         mae_test = mean_absolute_error(y_test, y_test_predicted)
 
         mae_cv[i_fold, :] = mae_test
+
+    predictions_df.to_csv(experiment_dir / 'SPM_wm+gm_SVM_1_per_site_{:}.csv'.format(i_site), index=False)
 
     print('MAE: Mean(SD) = %.3f(%.3f)' % (mae_cv.mean(), mae_cv.std()))
 
