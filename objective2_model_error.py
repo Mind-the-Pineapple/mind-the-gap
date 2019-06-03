@@ -1,3 +1,15 @@
+"""
+This script just use the following models
+
+SPM_wm+gm_SVM_1_per_site_4.csv
+SPM_wm+gm_SVM_1_per_site_6.csv
+SPM_wm+gm_SVM_1_per_site_8.csv
+SPM_wm+gm_SVM_1_per_site_15.csv
+SPM_wm+gm_SVM_1_per_site_16.csv
+SPM_wm+gm_SVM_w_site.csv
+tpot_all.csv
+
+"""
 from pathlib import Path
 
 import pandas as pd
