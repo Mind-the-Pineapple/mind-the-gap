@@ -61,7 +61,7 @@ GM+WM (metric MAE and 3 KFOLD CV for 1_per_site )
 | 15 | 4.485 | 4.255 | 1.159(0.374) | 19
 | 16 | 3.819 | 3.625 | 2.447(0.483) | 29
 
-### Linea rmodels
+### Linear models
 | Experiment | Script | MAE (years) |
 |---|---|:---:|
 | freesurfer_Linear | experiment_Freesurfer_Linear.py | 7.200(0.157) |
@@ -71,6 +71,10 @@ GM+WM (metric MAE and 3 KFOLD CV for 1_per_site )
 | linear_gm | experiment_SPM_gm_Linear.py | 13.609(0.397) |
 | linear_wm_nn | experiment_SPM_wm_Linear_Keras.py | 6.530(0.110) |
 | linear_wm | experiment_SPM_wm_Linear.py | 13.613(0.385) |
+
+### GPR models
+| Experiment | Script | MAE (years) |
+|---|---|:---:|
 | freesurfer_curv_GPR | experiment_freesurfer_curv_GPR.py | 7.200 |
 | freesurfer_thk_vol_GPR | experiment_freesurfer_thk_vol_GPR.py | 6.385 |
 | freesurfer_thk_vol_curv_GPR | experiment_freesurfer_thk_vol_curv_GPR.py | 6.132 |
